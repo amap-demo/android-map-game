@@ -12,6 +12,9 @@ Android_Map_Game
 
 * ![Screenshot](pictures/screenshot01.png "Case01")
 
+##扫一扫安装
+
+* ![Screenshot](pictures/download.png "Case02")
 
 ##使用方法：
 

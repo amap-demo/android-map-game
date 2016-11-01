@@ -12,10 +12,6 @@ Android_Map_Game
 
 * ![Screenshot](pictures/screenshot01.png "Case01")
 
-##扫一扫安装
-
-* ![Screenshot](pictures/download.png "Case02")
-
 ##使用方法：
 
 **1.搭建高德地图 AndroidSDK 工程方法见**
@@ -70,3 +66,8 @@ Android_Map_Game
         } 
     }
 ```
+
+
+##扫一扫安装
+
+* ![Screenshot](pictures/download.png "Case02")

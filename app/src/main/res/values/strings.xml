@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <string name="no_demos">No Demos</string>
+
+    <string name="opengl_demo">Opengl接口功能</string>
+    <string name="opengl_description_cube">立方体</string>
+    <string name="opengl_description_mask">底色配色</string>
+    <string name="opengl_description_particle">粒子特效</string>
+    <string name="opengl_description_model">模型加载</string>
+    <string name="opengl_description_model_ms3d">骨骼动画</string>
+    <string name="demo_title">AMapDemo</string>
+
+
+</resources>

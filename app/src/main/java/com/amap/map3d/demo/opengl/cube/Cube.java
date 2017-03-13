@@ -100,10 +100,10 @@ class Cube {
 
 
 
-    class MyShader {
+    private class MyShader {
         String vertexShader = "precision highp float;\n" +
                 "        attribute vec3 aVertex;//顶点数组,三维坐标\n" +
-                "        attribute vec4 aColor;//颜色数组,三维坐标\n" +
+                "        attribute vec4 aColor;//颜色数组,四维坐标\n" +
                 "        uniform mat4 aMVPMatrix;//mvp矩阵\n" +
                 "        varying vec4 color;//\n" +
                 "        void main(){\n" +

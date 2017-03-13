@@ -1,6 +1,7 @@
 package com.amap.map3d.demo.opengl.mask;
 
-import android.graphics.PointF;
+import android.opengl.GLES20;
+import android.opengl.Matrix;
 
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
@@ -17,8 +18,6 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class MaskMapRender implements CustomRenderer {
 
-    private boolean isNeedCalPoint = true;
-    private float[] translate_vector = new float[4];
     public static float SCALE = 0.005F;// 缩放暂时使用这个
 
     private LatLng center = new LatLng(39.90403, 116.407525);// 北京市经纬度
@@ -48,15 +47,7 @@ public class MaskMapRender implements CustomRenderer {
     public MaskMapRender(AMap aMap) {
         this.aMap = aMap;
 
-//        aMap.addMarker(new MarkerOptions().position(center));
         aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 15));
-
-//        aMap.addPolyline(new PolylineOptions().add(center, new LatLng(39.983456, 116.3154950))
-//                .width(10).color(Color.WHITE).zIndex(10));
-
-//        aMap.showMapText(true);
-//        aMap.showBuildings(true);
-
 
         //index
         ByteBuffer byteBuffer2 = ByteBuffer.allocateDirect(indices.length * 2);
@@ -94,77 +85,32 @@ public class MaskMapRender implements CustomRenderer {
             0, 3, 2
     };
 
+    float[] mvp = new float[16];
+
     @Override
     public void onDrawFrame(GL10 gl) {
 
 
-        //1.直接绘制四边形，然后缩放到和整个地图一样大，仰角在45°是 天空会显示出来
-        gl.glPushMatrix();
+        Matrix.setIdentityM(mvp, 0);
+
+        GLES20.glUseProgram(shader.program);
+
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_DST_COLOR);
+        GLES20.glUniform4fv(shader.aColor,1, color, 0);
+
+        GLES20.glEnableVertexAttribArray(shader.aVertex);
+        GLES20.glVertexAttribPointer(shader.aVertex,3,GLES20.GL_FLOAT,false,0,mVertexBuffer);
 
 
+        GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvp,0);
 
-        //平移到地图指定位置
-//        gl.glTranslatef(translate_vector[0], translate_vector[1], translate_vector[2]);
-        //缩放物体大小适应地图
-        gl.glScalef(width / 2.0f, height / 2.0f, 0);
+        GLES20.glDrawElements(gl.GL_TRIANGLES, indices.length, gl.GL_UNSIGNED_SHORT, mIndexBuffer);
 
-        gl.glEnableClientState(gl.GL_VERTEX_ARRAY);
+        GLES20.glDisableVertexAttribArray(shader.aVertex);
 
-//        gl.glEnable(GL10.GL_DEPTH_TEST);
+        GLES20.glDisable(GLES20.GL_BLEND);
 
-        gl.glDisable(GL10.GL_TEXTURE_2D);
-        //启用混合模式
-        gl.glEnable(GL10.GL_BLEND);
-        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_DST_COLOR);//高亮颜色
-//        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-
-//        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_DST_COLOR);
-//        gl.glColor4f(0f, 0f, 0.5f, 0.5f);
-//        gl.glColor4f(0.2f, 0.2f, 0.2f, 0.5f);
-        gl.glColor4f(color[0],color[1],color[2],color[3]);
-
-
-        gl.glVertexPointer(3, gl.GL_FLOAT, 0, mVertexBuffer);
-
-
-        gl.glDrawElements(gl.GL_TRIANGLES, indices.length, gl.GL_UNSIGNED_SHORT, mIndexBuffer);
-
-        gl.glDisableClientState(gl.GL_VERTEX_ARRAY);
-
-        gl.glDisable(GL10.GL_BLEND);
-
-        gl.glPopMatrix();
-        gl.glFlush();
-
-        /*//2.绘制四边形，使用正投影,铺满整个窗口
-        gl.glPushMatrix();
-        gl.glLoadIdentity();
-        gl.glViewport(0, 0, width, height);k
-        gl.glMatrixMode(gl.GL_PROJECTION);
-        gl.glLoadIdentity();
-        gl.glOrthof(-0, width, -0, height, 1, -1);
-//
-        gl.glEnableClientState(gl.GL_VERTEX_ARRAY);
-
-//        // 启用混合模式
-//        gl.glEnable(GL10.GL_BLEND);
-//        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
-//        // 设置透明显示
-//        gl.glEnable(GL10.GL_ALPHA_TEST);
-//        gl.glAlphaFunc(GL10.GL_GREATER, 0.2f);
-
-        gl.glVertexPointer(3, gl.GL_FLOAT, 0, mVertexBuffer);
-
-        gl.glColor4f(1, 0, 0, 0.2f);
-
-        gl.glDrawElements(gl.GL_TRIANGLES, indices.length, gl.GL_UNSIGNED_SHORT, mIndexBuffer);
-
-        gl.glDisableClientState(gl.GL_VERTEX_ARRAY);
-
-
-        gl.glLoadIdentity();
-        gl.glPopMatrix();
-        gl.glFlush();*/
     }
 
     @Override
@@ -172,63 +118,69 @@ public class MaskMapRender implements CustomRenderer {
         this.width = width;
         this.height = height;
 
-        /*//绘制四边形，使用正投影,铺满整个窗口 设置vertext
-        vertices[0] = -width;
-        vertices[1] = -height;
-        vertices[2] = 0;
-
-        vertices[3] = -width;
-        vertices[4] = height;
-        vertices[5] = 0;
-
-        vertices[6] = width;
-        vertices[7] = -height;
-        vertices[8] = 0;
-
-        vertices[9] = width;
-        vertices[10] = height;
-        vertices[11] = 0;
-
-        //顶点坐标
-        if(mVertexBuffer == null) {
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(vertices.length * 4);
-            byteBuffer.order(ByteOrder.nativeOrder());
-            mVertexBuffer = byteBuffer.asFloatBuffer();
-        }
-        mVertexBuffer.clear();
-        mVertexBuffer.put(vertices);
-        mVertexBuffer.position(0);*/
-
 
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-
+        initShader();
     }
 
     @Override
     public void OnMapReferencechanged() {
-        calScaleAndTranslate();
 
     }
 
-    private void calScaleAndTranslate() {
-        // 坐标会变化，重新计算计算偏移
-        PointF pointF = aMap.getProjection().toOpenGLLocation(center);
-
-        translate_vector[0] = pointF.x;
-        translate_vector[1] = pointF.y;
-        translate_vector[2] = 0;
-
-        //重新计算缩放比例
-        LatLng latLng2 = new LatLng(center.latitude + 0.001, center.longitude + 0.001);
-        PointF pointF2 = aMap.getProjection().toOpenGLLocation(latLng2);
-        double _x = Math.abs((pointF.x - pointF2.x));
-        double _y = Math.abs((pointF.y - pointF2.y));
-        SCALE = (float) Math.sqrt((_x * _x + _y * _y));
 
 
-        isNeedCalPoint = true;
+    private class MyShader {
+        String vertexShader = "precision highp float;\n" +
+                "        attribute vec3 aVertex;//顶点数组,三维坐标\n" +
+                "        uniform vec4 aColor;//颜色数组,四维坐标\n" +
+                "        uniform mat4 aMVPMatrix;//mvp矩阵\n" +
+                "        varying vec4 color;//\n" +
+                "        void main(){\n" +
+                "            gl_Position = aMVPMatrix * vec4(aVertex, 1.0);\n" +
+                "            color = aColor;\n" +
+                "        }";
+
+        String fragmentShader =
+                "        precision highp float;\n" +
+                "        varying vec4 color;//\n" +
+                "        void main(){\n" +
+                "            gl_FragColor = color;\n" +
+                "        }";
+
+        int aVertex,aMVPMatrix,aColor;
+        int program;
+
+        public void create() {
+            int vertexLocation = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
+            int fragmentLocation = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
+
+            GLES20.glShaderSource(vertexLocation,vertexShader);
+            GLES20.glCompileShader(vertexLocation);
+
+            GLES20.glShaderSource(fragmentLocation,fragmentShader);
+            GLES20.glCompileShader(fragmentLocation);
+
+            program = GLES20.glCreateProgram();
+            GLES20.glAttachShader(program,vertexLocation);
+            GLES20.glAttachShader(program,fragmentLocation);
+            GLES20.glLinkProgram(program);
+
+
+            aVertex  = GLES20.glGetAttribLocation(program, "aVertex");
+            aMVPMatrix = GLES20.glGetUniformLocation(program,"aMVPMatrix");
+            aColor = GLES20.glGetUniformLocation(program,"aColor");
+
+        }
+    }
+
+    MyShader shader;
+
+    public void initShader() {
+        shader = new MyShader();
+        shader.create();
     }
 }

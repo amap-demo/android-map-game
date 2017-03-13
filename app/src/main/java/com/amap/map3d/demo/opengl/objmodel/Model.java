@@ -68,8 +68,8 @@ public class Model {
         GLES20.glEnable(GLES20.GL_BLEND);
 
 
-        GLES10.glBlendFunc(GLES10.GL_SRC_ALPHA, GLES10.GL_ONE_MINUS_SRC_ALPHA);
-        GLES10.glColor4f(1.0f, 1.0f, 1.0f, 1);
+        GLES20.glBlendFunc(GLES10.GL_SRC_ALPHA, GLES10.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBlendColor(1.0f, 1.0f, 1.0f, 1);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tid);
         GLES20.glEnableVertexAttribArray(shader.aTexture);
         GLES20.glVertexAttribPointer(shader.aTexture,2,GLES20.GL_FLOAT, false, 2 * 4,textureBuffer);

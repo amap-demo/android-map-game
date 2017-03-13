@@ -105,7 +105,7 @@ public class MaskMapRender implements CustomRenderer {
 
         GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvp,0);
 
-        GLES20.glDrawElements(gl.GL_TRIANGLES, indices.length, gl.GL_UNSIGNED_SHORT, mIndexBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
 
         GLES20.glDisableVertexAttribArray(shader.aVertex);
 

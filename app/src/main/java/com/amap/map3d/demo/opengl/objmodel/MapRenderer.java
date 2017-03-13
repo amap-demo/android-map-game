@@ -5,7 +5,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.opengl.GLES10;
+import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.opengl.Matrix;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -49,6 +51,7 @@ public class MapRenderer implements CustomRenderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        Model.initShader();
         readFromRaw(R.raw.jeep);
         model = new Model(vertext_list,textrue_list);
         int tid = loadGLTexture(context, R.drawable.jeep_texture6);
@@ -62,37 +65,36 @@ public class MapRenderer implements CustomRenderer {
 
     }
 
+    float[] mvp = new float[16];
+
     @Override
     public void onDrawFrame(GL10 gl) {
+
         // 注2：绘制各种图形的opengl代码
 
-        model.draw();
+        if(model != null) {
+            Matrix.setIdentityM(mvp, 0);
+
+            //偏移
+            PointF pointF = aMap.getProjection().toOpenGLLocation(center);
+
+            Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
+
+            Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
+            int scale = 10000;
+            Matrix.scaleM(mvp, 0 , scale, scale, scale);
+
+            model.draw(mvp);
+        }
+
 
     }
 
     @Override
     public void OnMapReferencechanged() {
-        //注3：回调这个时，坐标系发生改变，需要重新计算缩放比例
-        calScaleAndTranslate();
-        model.update(translate_vector,SCALE);
 
     }
 
-    private void calScaleAndTranslate() {
-        // 坐标会变化，重新计算计算偏移，供参考，可以自行定义
-        PointF pointF = aMap.getProjection().toOpenGLLocation(center);
-
-        translate_vector[0] = pointF.x;
-        translate_vector[1] = pointF.y;
-        translate_vector[2] = 0;
-
-        //重新计算缩放比例
-        LatLng latLng2 = new LatLng(center.latitude + 0.001, center.longitude + 0.001);
-        PointF pointF2 = aMap.getProjection().toOpenGLLocation(latLng2);
-        double _x = Math.abs((pointF.x - pointF2.x));
-        double _y = Math.abs((pointF.y - pointF2.y));
-        SCALE = (float) Math.sqrt((_x * _x + _y * _y));
-    }
 
 
     List<Float> vertext_list = new ArrayList<Float>();
@@ -119,20 +121,19 @@ public class MapRenderer implements CustomRenderer {
                 } catch (IOException e) {
                 }
             }
-
             //生成id，n为参数个数，textures生成之后存放的位置
-            GLES10.glGenTextures(1, textures, 0);
+            GLES20.glGenTextures(1, textures, 0);
             //加载纹理
-            GLES10.glBindTexture(GL10.GL_TEXTURE_2D, textures[0]);
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
 
-            GLES10.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST);
-            GLES10.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 
-            GLES10.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-            GLES10.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
 
             //Use the Android GLUtils to specify a two-dimensional texture image from our bitmap
-            GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, bitmap, 0);
+            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
             bitmap.recycle();
         }

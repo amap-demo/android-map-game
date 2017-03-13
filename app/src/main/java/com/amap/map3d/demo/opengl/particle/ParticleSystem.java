@@ -1,6 +1,10 @@
 package com.amap.map3d.demo.opengl.particle;
 
 import android.opengl.GLES10;
+import android.opengl.GLES20;
+import android.opengl.Matrix;
+import android.util.Log;
+
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -104,18 +108,8 @@ class ParticleSystem {
     }
 
     private float[] translate_vector = new float[4];
-    private float SCALE = 0.005F;// 缩放暂时使用这个
+    private float SCALE = 0.1F;// 缩放暂时使用这个
 
-    /**
-     * 地图坐标系变换的时候会调用
-     *
-     * @param translate_vector，需要平移的距离
-     * @param scale                    整体缩放啊的比例
-     */
-    public void updateReference(float[] translate_vector, float scale) {
-        this.translate_vector = translate_vector;
-        this.SCALE = scale;
-    }
 
     long mLastTime = 0L;
     public int col;
@@ -176,55 +170,44 @@ class ParticleSystem {
     }
 
 
-    public void draw() {
 
-        GLES10.glPushMatrix();
+    public void draw(float[] mvp) {
 
-        //平移到地图指定位置
-        GLES10.glTranslatef(translate_vector[0], translate_vector[1], translate_vector[2]);
-        //缩放物体大小适应地图
-        GLES10.glScalef(SCALE, SCALE, SCALE);
+        Matrix.scaleM(mvp, 0, SCALE,SCALE,SCALE);
 
-//        long time = SystemClock.uptimeMillis() % 4000L;
-//        float angle = 0.090f * ((int) time);
-//        GLES10.glRotatef(angle, 1, 1, 1);
+        GLES20.glUseProgram(shader.program);
 
-        GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
-        GLES10.glEnableClientState(GLES10.GL_TEXTURE_COORD_ARRAY);
 
-        //启用纹理
-        GLES10.glEnable(GLES10.GL_TEXTURE_2D);
-        //绑定纹理
-        GLES10.glBindTexture(GLES10.GL_TEXTURE_2D, textureId);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glEnableVertexAttribArray(shader.aTexture);
+        GLES20.glVertexAttribPointer(shader.aVertex,2,GLES20.GL_FLOAT, false, 2 * 4,mTextureBuffer);
 
-        //顶点指针
-        GLES10.glVertexPointer(3, GLES10.GL_FLOAT, 0, mVertexBuffer);
-        //指定纹理坐标指针
-        GLES10.glTexCoordPointer(2, GLES10.GL_FLOAT, 0, mTextureBuffer);
+        GLES20.glEnableVertexAttribArray(shader.aVertex);
+        GLES20.glVertexAttribPointer(shader.aVertex,3,GLES20.GL_FLOAT, false, 3 * 4,mVertexBuffer);
 
-        //Set the face rotation
-        GLES10.glFrontFace(GLES10.GL_CCW);
+
+        GLES20.glFrontFace(GLES20.GL_CCW);
+
 
         // 开始画
         for (ParticlePoint particlePoint : particles) {
-            GLES10.glPushMatrix();
+            float[] mvpMatrix = mvp.clone();
             float[] color = particlePoint.color;
-            GLES10.glColor4f(color[0], color[1], color[2], particlePoint.life);
+            GLES20.glUniform4f(shader.aColor,color[0], color[1], color[2], particlePoint.life);
 
             float[] pos = particlePoint.pos;
-            GLES10.glTranslatef(pos[0], pos[1], pos[2]);
-//            GLES10.glDrawElements(GLES10.GL_TRIANGLES, mIndexBuffer.capacity(), GLES10.GL_UNSIGNED_BYTE, mIndexBuffer);
-              GLES10.glDrawElements(GLES10.GL_TRIANGLES, indices.length, GLES10.GL_UNSIGNED_SHORT, mIndexBuffer);
-            GLES10.glPopMatrix();
+            Matrix.translateM(mvpMatrix,0,pos[0], pos[1], pos[2]);
+            GLES20.glUniformMatrix4fv(shader.aVertex,1,false,mvpMatrix,0);
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
         }
 
-        GLES10.glDisable(GLES10.GL_TEXTURE_2D);
-        GLES10.glDisableClientState(GLES10.GL_VERTEX_ARRAY);
-        GLES10.glDisableClientState(GLES10.GL_TEXTURE_COORD_ARRAY);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
+        GLES20.glDisableVertexAttribArray(shader.aVertex);
+        GLES20.glDisableVertexAttribArray(shader.aTexture);
+        GLES20.glUseProgram(0);
 
 
-        GLES10.glPopMatrix();
-        GLES10.glFlush();
+        checkGlError("particleSystem");
 
 
         if (delay > 25) {
@@ -237,6 +220,71 @@ class ParticleSystem {
 
         delay++;
 
+    }
+
+
+    static class MyShader {
+        String vertexShader = "precision highp float;\n" +
+                "        attribute vec3 aVertex;//顶点数组,三维坐标\n" +
+                "        attribute vec2 aTexture;//颜色数组,四维坐标\n" +
+                "        uniform mat4 aMVPMatrix;//mvp矩阵\n" +
+                "        varying vec2 texture;//\n" +
+                "        void main(){\n" +
+                "            gl_Position = aMVPMatrix * vec4(aVertex, 1.0);\n" +
+                "            texture = aTexture;\n" +
+                "        }";
+
+        String fragmentShader =
+                "        precision highp float;\n" +
+                        "        varying vec2 texture;//\n" +
+                        "        uniform sampler2D aTextureUnit0;//纹理id\n" +
+                        "        uniform vec4 aColor;//颜色数组,四维坐标\n" +
+                        "        void main(){\n" +
+                        "            gl_FragColor = texture2D(aTextureUnit0, texture) * aColor;\n" +
+                        "        }";
+
+        int aVertex,aMVPMatrix,aTexture,aColor;
+        int program;
+
+        public void create() {
+            int vertexLocation = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
+            int fragmentLocation = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
+
+            GLES20.glShaderSource(vertexLocation,vertexShader);
+            GLES20.glCompileShader(vertexLocation);
+
+            GLES20.glShaderSource(fragmentLocation,fragmentShader);
+            GLES20.glCompileShader(fragmentLocation);
+
+            program = GLES20.glCreateProgram();
+            GLES20.glAttachShader(program,vertexLocation);
+            GLES20.glAttachShader(program,fragmentLocation);
+            GLES20.glLinkProgram(program);
+
+
+            aVertex  = GLES20.glGetAttribLocation(program, "aVertex");
+            aTexture = GLES20.glGetAttribLocation(program,"aTexture");
+            aMVPMatrix = GLES20.glGetUniformLocation(program,"aMVPMatrix");
+            aColor = GLES20.glGetUniformLocation(program,"aColor");
+
+        }
+    }
+
+    static MyShader shader;
+
+    public static void initShader() {
+        checkGlError("before init shaders1");
+        shader = new MyShader();
+        shader.create();
+        checkGlError("init shaders");
+    }
+
+    public static void checkGlError(String glOperation) {
+        int error;
+        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+            Log.e("amap", glOperation + ": glError " + error);
+            throw new RuntimeException(glOperation + ": glError " + error);
+        }
     }
 
 

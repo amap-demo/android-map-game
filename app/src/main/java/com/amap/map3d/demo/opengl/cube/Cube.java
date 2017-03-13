@@ -1,15 +1,16 @@
 package com.amap.map3d.demo.opengl.cube;
 
+import android.opengl.GLES10;
+import android.opengl.GLES20;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
 
-import android.opengl.GLES10;
-
 class Cube {
-    ArrayList<Float> verticesList = new ArrayList<Float>();
+    ArrayList<Float> verticesList = new ArrayList<>();
 
     short indices[] = {
             0, 4, 5,
@@ -82,15 +83,6 @@ class Cube {
     private ShortBuffer indexBuffer;
     private FloatBuffer colorBuffer;
 
-    private float[] translate_vector = new float[4];
-    private float SCALE = 0.005F;// 缩放暂时使用这个
-
-    public void update(float[] translate_vector, float scale) {
-        this.translate_vector = translate_vector;
-        this.SCALE = scale;
-//        update();
-    }
-
     private void update() {
         if (vertextBuffer == null) {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(verticesList.size() * 4);
@@ -107,41 +99,84 @@ class Cube {
 
 
 
-    public void draw() {
 
-        GLES10.glPushMatrix();
+    class MyShader {
+        String vertexShader = "precision highp float;\n" +
+                "        attribute vec3 aVertex;//顶点数组,三维坐标\n" +
+                "        attribute vec4 aColor;//颜色数组,三维坐标\n" +
+                "        uniform mat4 aMVPMatrix;//mvp矩阵\n" +
+                "        varying vec4 color;//\n" +
+                "        void main(){\n" +
+                "            gl_Position = aMVPMatrix * vec4(aVertex, 1.0);\n" +
+                "            color = aColor;\n" +
+                "        }";
 
-        //平移到地图指定位置
-        GLES10.glTranslatef(translate_vector[0], translate_vector[1], translate_vector[2]);
-        //缩放物体大小适应地图
-        GLES10.glScalef(SCALE, SCALE, SCALE);
+        String fragmentShader = "//有颜色 没有纹理\n" +
+                "        precision highp float;\n" +
+                "        varying vec4 color;//\n" +
+                "        void main(){\n" +
+                "            gl_FragColor = color;\n" +
+                "        }";
 
-        GLES10.glDisable(GLES10.GL_TEXTURE_2D);
+        int aVertex,aMVPMatrix,aColor;
+        int program;
 
-        GLES10.glEnable(GLES10.GL_DEPTH_TEST);
-        GLES10.glEnableClientState(GLES10.GL_VERTEX_ARRAY);
-        GLES10.glEnableClientState(GLES10.GL_COLOR_ARRAY);
+        public void create() {
+            int vertexLocation = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
+            int fragmentLocation = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
+
+            GLES20.glShaderSource(vertexLocation,vertexShader);
+            GLES20.glCompileShader(vertexLocation);
+
+            GLES20.glShaderSource(fragmentLocation,fragmentShader);
+            GLES20.glCompileShader(fragmentLocation);
+
+            program = GLES20.glCreateProgram();
+            GLES20.glAttachShader(program,vertexLocation);
+            GLES20.glAttachShader(program,fragmentLocation);
+            GLES20.glLinkProgram(program);
+
+
+            aVertex  = GLES20.glGetAttribLocation(program, "aVertex");
+            aMVPMatrix = GLES20.glGetUniformLocation(program,"aMVPMatrix");
+            aColor = GLES20.glGetAttribLocation(program,"aColor");
+
+        }
+    }
+
+    MyShader shader;
+
+    public void initShader() {
+        shader = new MyShader();
+        shader.create();
+    }
+
+    public void drawES20(float[] mvp) {
+
+        GLES20.glUseProgram(shader.program);
+
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+
+        GLES20.glEnableVertexAttribArray(shader.aVertex);
 
         //顶点指针
-        GLES10.glVertexPointer(3, GLES10.GL_FLOAT, 0, vertextBuffer);
+        GLES20.glVertexAttribPointer(shader.aVertex, 3, GLES20.GL_FLOAT, false, 0, vertextBuffer);
 
-        //指定着色模式
-        GLES10.glShadeModel(GLES10.GL_FLAT);
 
         //颜色指针
-        GLES10.glColorPointer(4, GLES10.GL_FLOAT, 0, colorBuffer);
+        GLES20.glEnableVertexAttribArray(shader.aColor);
+        GLES20.glVertexAttribPointer(shader.aColor,4, GLES20.GL_FLOAT,false,0,colorBuffer);
+
+        GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvp,0);
 
         //开始画
-        GLES10.glDrawElements(GLES10.GL_TRIANGLES, indices.length, GLES10.GL_UNSIGNED_SHORT, indexBuffer);
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, indexBuffer);
 
 
-        GLES10.glDisableClientState(GLES10.GL_VERTEX_ARRAY);
-        GLES10.glDisableClientState(GLES10.GL_COLOR_ARRAY);
+        GLES20.glDisableVertexAttribArray(shader.aVertex);
 
-        GLES10.glDisable(GLES10.GL_DEPTH_TEST);
+        GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 
-        GLES10.glPopMatrix();
-        GLES10.glFlush();
 
     }
 

@@ -2,14 +2,16 @@ package com.amap.map3d.demo.opengl.ms3dmodel;
 
 import android.content.Context;
 import android.graphics.PointF;
-import android.opengl.GLES10;
+import android.opengl.GLES20;
+import android.opengl.Matrix;
 
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.CustomRenderer;
 import com.amap.api.maps.model.LatLng;
-import com.amap.map3d.demo.opengl.ms3dmodel.gl10.MS3DModel_GL10;
-import com.amap.map3d.demo.opengl.ms3dmodel.gl10.TextureManager_GL10;
+import com.amap.map3d.demo.opengl.ms3dmodel.ms3d.MS3DModel;
+import com.amap.map3d.demo.opengl.ms3dmodel.util.MatrixState;
+import com.amap.map3d.demo.opengl.ms3dmodel.util.TextureManager;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -30,11 +32,11 @@ public class MS3DMapRender implements CustomRenderer {
 
     private LatLng center = new LatLng(39.90403, 116.407525);// 北京市经纬度
 
-    TextureManager_GL10 manager;	//纹理管理器
-    MS3DModel_GL10 ms3d;			//ms3d模型
+    TextureManager manager;	//纹理管理器
+    MS3DModel ms3d;			//ms3d模型
     float time = 12.3f;			//当前时间（用于动画播放）
 
-    List<MS3DModel_GL10> ms3ds = new ArrayList<MS3DModel_GL10>();
+    List<MS3DModel> ms3ds = new ArrayList<MS3DModel>();
 
     private AMap aMap;
 
@@ -55,15 +57,15 @@ public class MS3DMapRender implements CustomRenderer {
     }
 
     public void randomPostion() {
-        for( MS3DModel_GL10 ms3DModel_gl10 : ms3ds) {
+        for( MS3DModel ms3DModel : ms3ds) {
 
-            if(ms3DModel_gl10 instanceof TigerModel) {
+            if(ms3DModel instanceof TigerModelGL20) {
                 LatLng latLng = new LatLng(center.latitude + (random.nextInt(4) - 2) + random.nextDouble(),
                         center.longitude + random.nextInt(4) - 2 + random.nextDouble());
                 PointF pointF1 = aMap.getProjection().toOpenGLLocation(latLng);
 //                PointF pointF1 = new PointF(pointF.x + i * 2, pointF.y);
-                ((TigerModel) ms3DModel_gl10).setPosition(pointF1);
-                ((TigerModel) ms3DModel_gl10).setLatlngPosition(latLng);
+                ((TigerModelGL20) ms3DModel).setPosition(pointF1);
+                ((TigerModelGL20) ms3DModel).setLatlngPosition(latLng);
             }
         }
     }
@@ -73,33 +75,36 @@ public class MS3DMapRender implements CustomRenderer {
 
     long lastTime = 0L;
 
+    float[] mvp = new float[16];
+
     @Override
     public void onDrawFrame(GL10 gl) {
+
+
         if(ms3d != null) {
+            MatrixState.pushMatrix();
 
-            GLES10.glPushMatrix();
-            GLES10.glDisable(GLES10.GL_CULL_FACE);
+            for(MS3DModel ms3dModel : ms3ds) {
+                MatrixState.pushMatrix();
+                if(ms3dModel instanceof TigerModelGL20) {
+//                    PointF pointF = ((TigerModelGL20) ms3dModel).position;
 
-            GLES10.glEnable(GLES10.GL_DEPTH_TEST);
+                    PointF pointF = aMap.getProjection().toOpenGLLocation(((TigerModelGL20) ms3dModel).latLngPoint);
 
 
-            for(MS3DModel_GL10 ms3dModel : ms3ds) {
-                GLES10.glPushMatrix();
-                if(ms3dModel instanceof TigerModel) {
-                    PointF pointF = ((TigerModel) ms3dModel).position;
-                    GLES10.glTranslatef(pointF.x, pointF.y, translate_vector[2]);
-                    //平移到地图指定位置
-//                    GLES10.glTranslatef(translate_vector[0], translate_vector[1], translate_vector[2]);
-                    //缩放物体大小适应地图
-                    GLES10.glScalef(SCALE,SCALE,SCALE);
+                    Matrix.setIdentityM(mvp, 0);
 
-                    GLES10.glRotatef(90,1,0,0);
-                    GLES10.glRotatef(-90,0,1,0);
+                    Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
+                    Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
 
-                    float bearing = getBearing(translate_vector[0],translate_vector[1], pointF.x,pointF.y);
+                    int scale = 100;
+                    Matrix.scaleM(mvp, 0 , scale, scale, scale);
 
-                    //沿垂直屏幕方向旋转
-                    GLES10.glRotatef(bearing,0,1,0);
+                    Matrix.rotateM(mvp, 0 ,90,1,0,0);
+                    Matrix.rotateM(mvp, 0 ,-90,0,1,0);
+
+
+                    MatrixState.setMatrix(mvp);
 
                     ms3dModel.animate(time);
                     time += 0.015f;
@@ -108,33 +113,28 @@ public class MS3DMapRender implements CustomRenderer {
                         time = 12.3f + time - ms3dModel.getTotalTime();
                     }
 
-                    //移动距离
-                    LatLng last = ((TigerModel) ms3dModel).latLngPoint;
-                    float offset = 0.00001f;
-//                    if(Math.abs(last.latitude - center.latitude) < offset &&
-//                            Math.abs(last.longitude - center.longitude) < offset) {
-//                        Log.i("zxy","到达终点" );
-//                    } else {
-
-                        LatLng latLng = new LatLng(last.latitude + Math.cos(bearing) *offset,
-                                last.longitude + Math.sin(bearing) * offset);
-                        ((TigerModel) ms3dModel).setLatlngPosition(latLng);
-                        //重新计算偏移位置
-                        calScaleAndTranslate();
+//                    //移动距离
+//                    LatLng last = ((TigerModelGL20) ms3dModel).latLngPoint;
+//                    float offset = 0.00001f;
+////                    if(Math.abs(last.latitude - center.latitude) < offset &&
+////                            Math.abs(last.longitude - center.longitude) < offset) {
+////                        Log.i("zxy","到达终点" );
+////                    } else {
+//
+//                        LatLng latLng = new LatLng(last.latitude + Math.cos(bearing) *offset,
+//                                last.longitude + Math.sin(bearing) * offset);
+//                        ((TigerModelGL20) ms3dModel).setLatlngPosition(latLng);
+//                        //重新计算偏移位置
+//                        calScaleAndTranslate();
 //                    }
 
 
 
 
                 }
-                GLES10.glPopMatrix();
-                GLES10.glFlush();
+                MatrixState.popMatrix();
             }
-
-            GLES10.glDisable(GLES10.GL_DEPTH_TEST);
-
-            GLES10.glPopMatrix();
-            GLES10.glFlush();
+            MatrixState.popMatrix();
         }
 
 
@@ -167,7 +167,10 @@ public class MS3DMapRender implements CustomRenderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        manager = new TextureManager_GL10(mContext.getResources());
+
+        MatrixState.setInitStack();
+
+        manager = new TextureManager(mContext.getResources());
         //获取ms3d文件的输入流
         InputStream in = null;
         try{
@@ -178,12 +181,12 @@ public class MS3DMapRender implements CustomRenderer {
             e.printStackTrace();
         }
         //从输入流加载模型
-        ms3d = MS3DModel_GL10.load(in,manager,mContext);
+        ms3d = MS3DModel.load(in,manager,mContext);
 
         for(int i =0; i < 1; i++) {
-            MS3DModel_GL10 ms3DModel_gl10 = TigerModel.cloneModel(ms3d,mContext);
+            MS3DModel ms3DModel = TigerModelGL20.cloneModel(ms3d,mContext);
 
-            if(ms3DModel_gl10 instanceof TigerModel) {
+            if(ms3DModel instanceof TigerModelGL20) {
 //                LatLng latLng = new LatLng(center.latitude + (random.nextInt(2) - 1) + random.nextDouble(),
 //                        center.longitude + random.nextInt(2) - 1 + random.nextDouble());
                 LatLng latLng = new LatLng(center.latitude + 0.01f,center.longitude + 0.01f);
@@ -191,11 +194,11 @@ public class MS3DMapRender implements CustomRenderer {
                 aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,15));
                 PointF pointF1 = aMap.getProjection().toOpenGLLocation(latLng);
 //                PointF pointF1 = new PointF(pointF.x + i * 2, pointF.y);
-                ((TigerModel) ms3DModel_gl10).setPosition(pointF1);
-                ((TigerModel) ms3DModel_gl10).setLatlngPosition(latLng);
+                ((TigerModelGL20) ms3DModel).setPosition(pointF1);
+                ((TigerModelGL20) ms3DModel).setLatlngPosition(latLng);
             }
 
-            ms3ds.add(ms3DModel_gl10);
+            ms3ds.add(ms3DModel);
         }
     }
 
@@ -225,12 +228,12 @@ public class MS3DMapRender implements CustomRenderer {
         isNeedCalPoint = true;
 
 
-        for( MS3DModel_GL10 ms3DModel_gl10 : ms3ds) {
+        for( MS3DModel ms3DModel : ms3ds) {
 
-            if(ms3DModel_gl10 instanceof TigerModel) {
-                PointF pointF1 = aMap.getProjection().toOpenGLLocation(((TigerModel) ms3DModel_gl10).latLngPoint);
+            if(ms3DModel instanceof TigerModelGL20) {
+                PointF pointF1 = aMap.getProjection().toOpenGLLocation(((TigerModelGL20) ms3DModel).latLngPoint);
 //                PointF pointF1 = new PointF(pointF.x + i * 2, pointF.y);
-                ((TigerModel) ms3DModel_gl10).setPosition(pointF1);
+                ((TigerModelGL20) ms3DModel).setPosition(pointF1);
             }
         }
     }

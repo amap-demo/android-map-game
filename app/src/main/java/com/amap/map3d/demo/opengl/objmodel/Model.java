@@ -79,7 +79,7 @@ public class Model {
 
 
 
-        GLES20.glUniformMatrix4fv(shader.aVertex,1,false,mvp,0);
+        GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvp,0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, verticesList.size() / 3);
 
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);

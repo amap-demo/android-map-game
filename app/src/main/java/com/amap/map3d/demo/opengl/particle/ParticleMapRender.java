@@ -149,6 +149,12 @@ public class ParticleMapRender implements CustomRenderer {
     }
 
 
-
-
+    public void onDestroy() {
+        aMap = null;
+        context = null;
+        if(obj != null) {
+            obj.destroy();
+        }
+        obj = null;
+    }
 }

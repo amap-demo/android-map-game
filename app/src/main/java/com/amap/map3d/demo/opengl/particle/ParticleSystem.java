@@ -51,7 +51,7 @@ class ParticleSystem {
                     {0.5f, 0.5f, 1.0f}, {0.75f, 0.5f, 1.0f}, {1.0f, 0.5f, 1.0f}, {1.0f, 0.5f, 0.75f}
             };
 
-    public ArrayList<ParticlePoint> particles = new ArrayList<>();
+    public ArrayList<ParticlePoint> particles = new ArrayList<ParticlePoint>();
 
 
     public void setTextureId(int textureId) {
@@ -173,6 +173,7 @@ class ParticleSystem {
 
     public void draw(float[] mvp) {
 
+        checkGlError("particle system  before draw");
         Matrix.scaleM(mvp, 0, SCALE,SCALE,SCALE);
 
         GLES20.glUseProgram(shader.program);
@@ -201,8 +202,9 @@ class ParticleSystem {
 
             float[] pos = particlePoint.pos;
             Matrix.translateM(mvpMatrix,0,pos[0], pos[1], pos[2]);
-            GLES20.glUniformMatrix4fv(shader.aVertex,1,false,mvpMatrix,0);
+            GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvpMatrix,0);
             GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
+            checkGlError("glDrawElements");
         }
 
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
@@ -224,6 +226,10 @@ class ParticleSystem {
 
         delay++;
 
+    }
+
+    public void destroy() {
+        shader = null;
     }
 
 

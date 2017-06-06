@@ -10,7 +10,7 @@ import java.nio.ShortBuffer;
 import java.util.ArrayList;
 
 class Cube {
-    ArrayList<Float> verticesList = new ArrayList<>();
+    ArrayList<Float> verticesList = new ArrayList<Float>();
 
     short indices[] = {
             0, 4, 5,

@@ -23,7 +23,7 @@ public class ParticleActivity extends android.app.Activity  {
     private MapView mapView;
     private AMap aMap;
 
-    CustomRenderer renderer = null;
+    ParticleMapRender renderer = null;
 
 
 
@@ -171,7 +171,11 @@ public class ParticleActivity extends android.app.Activity  {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if(renderer != null) {
+            renderer.onDestroy();
+        }
         mapView.onDestroy();
+
     }
 
 }

@@ -23,6 +23,5 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.amap.api:map3d-native:latest.integration'
-    compile 'com.amap.api:map3d:latest.integration'
+    compile 'com.amap.api:3dmap:latest.integration'
 }

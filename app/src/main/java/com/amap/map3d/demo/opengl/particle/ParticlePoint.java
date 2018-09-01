@@ -45,4 +45,11 @@ public class ParticlePoint {
         color[3] = a;
     }
 
+    /**
+     * 改粒子是否处于生命周期内
+     * @return
+     */
+    public boolean isAlive() {
+        return this.life > 0;
+    }
 }

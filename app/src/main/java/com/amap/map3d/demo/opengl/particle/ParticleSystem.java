@@ -15,9 +15,16 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 
 class ParticleSystem {
+    /**
+     * 默认发射率，每秒发射10个， 每100ms发射一个
+     */
+    private static final int DEFAULT_LAUNCH_OFFSET_TIME = 100;
+
     float vertices[] = {
             0 - 0.5f, 0 - 0.5f, 1f,
             0 - 0.5f, 1 - 0.5f, 1f,
@@ -53,10 +60,34 @@ class ParticleSystem {
 
     private Random random;
     private int maxParticles;
-    private int duration;
-    private boolean isInit;
+
+    /**
+     * 当前粒子数量
+     */
+    private int currentParticleNum = 0;
+
+    /**
+     * 粒子系统持续时长
+     */
+    private long duration;
+
+    /**
+     * 每个粒子的寿命
+     */
+    private long particleLifeTime;
+
+    /**
+     * 粒子系统当前生命值，开始时和duration相同
+     * 用户计算存活时间
+     */
+    private long particleSystemLife;
     private boolean loop;
     private ParticleShape particleShape;
+    private ParticleEmisson particleEmission;
+
+
+    // 记录上一次时间
+    private long mLastTime = 0L;
 
     public ParticleSystem() {
 
@@ -84,40 +115,34 @@ class ParticleSystem {
         mTextureBuffer.position(0);
 
     }
-    long mLastTime = 0L;
+
 
     /**
      * 更新每个粒子的位置
      */
-    private void updateParticle() {
-        // calculate time between frames in seconds
-        long currentTime = System.currentTimeMillis();
-        float timeFrame = (currentTime - mLastTime) / 1000f;
+    private void updateParticle(List<ParticlePoint> readyToShowPoint, float timeFrame) {
+        if(readyToShowPoint == null) {
+            return;
+        }
+        synchronized (readyToShowPoint) {
+            Iterator<ParticlePoint> it = readyToShowPoint.iterator();
+            while(it.hasNext()){
+                ParticlePoint particlePoint = it.next();
 
-        mLastTime = currentTime;
-
-        // move the particles
-        for (int i = 0; i < maxParticles; i++) {
-            ParticlePoint particlePoint = particles.get(i);
-
-            if(particlePoint.life < 0) {
-                continue;
-            }
-
-            // 粒子运动方式
-            // move the particle according to it's speed
-            particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
-            particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
-            particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
-            particlePoint.life -= timeFrame * 1000;
-
-            //如果是循环的则循环处理
-            if(loop) {
-                if(particlePoint.life < 0) {
-                    setUpParticlePoint(particlePoint);
+                // 生命周期已经结束的元素直接删除
+                if (!particlePoint.isAlive()) {
+                    it.remove();
+                    continue;
                 }
-            }
+                // 粒子运动状态更新
+                particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
+                particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
+                particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
+                particlePoint.life -= timeFrame * 1000;
 
+
+
+            }
         }
     }
 
@@ -125,7 +150,7 @@ class ParticleSystem {
         if (particlePoint != null) {
             particlePoint.setPosition(particleShape.getPoint());
 //            particlePoint.setPosition(random.nextFloat() * 2 - 1, random.nextFloat() / 10 + 1.5f, 0);
-            particlePoint.life = duration;
+            particlePoint.life = particleLifeTime;
             particlePoint.setColor(1,1,1,1);
             // rain
             particlePoint.setVelocity(-0.1f, -(random.nextFloat()  + 1.0f), 0);
@@ -136,8 +161,10 @@ class ParticleSystem {
         }
     }
 
-    public void draw(float[] mvp) {
 
+    List<ParticlePoint> readyToShowPoint = new ArrayList<ParticlePoint>();
+
+    public void draw(float[] mvp) {
 
         if(!isLoadTexture) {
             textureItem = glTextureManager.getTextureItem(texture);
@@ -158,12 +185,24 @@ class ParticleSystem {
             initShader();
         }
 
-        if(!isInit) {
-            initParticle();
-            isInit = true;
+        if(shader == null) {
+            return;
         }
 
-        updateParticle();
+        // calculate time between frames in seconds
+        long currentTime = System.currentTimeMillis();
+        float timeFrame = (currentTime - mLastTime) / 1000f;
+
+        mLastTime = currentTime;
+
+        if(isSystemOver(timeFrame)) {
+            return;
+        }
+
+        // 准备需要绘制的粒子
+        prepareParticle(readyToShowPoint,currentTime,timeFrame);
+
+        updateParticle(readyToShowPoint, timeFrame);
 
 
         checkGlError("particle system  before draw");
@@ -185,20 +224,22 @@ class ParticleSystem {
         GLES20.glFrontFace(GLES20.GL_CCW);
 
 
-        // 开始画
-        for (ParticlePoint particlePoint : particles) {
-            if(particlePoint.life < 0) {
-                continue;
-            }
-            float[] mvpMatrix = mvp.clone();
-            float[] color = particlePoint.color;
-            GLES20.glUniform4f(shader.aColor,color[0], color[1], color[2], particlePoint.life);
+        synchronized (readyToShowPoint) {
+            // 开始画
+            for (ParticlePoint particlePoint : readyToShowPoint) {
+                if (!particlePoint.isAlive()) {
+                    continue;
+                }
+                float[] mvpMatrix = mvp.clone();
+                float[] color = particlePoint.color;
+                GLES20.glUniform4f(shader.aColor, color[0], color[1], color[2], color[3]);
 
-            float[] pos = particlePoint.pos;
-            Matrix.translateM(mvpMatrix,0,pos[0], pos[1], pos[2]);
-            GLES20.glUniformMatrix4fv(shader.aMVPMatrix,1,false,mvpMatrix,0);
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
-            checkGlError("glDrawElements");
+                float[] pos = particlePoint.pos;
+                Matrix.translateM(mvpMatrix, 0, pos[0], pos[1], pos[2]);
+                GLES20.glUniformMatrix4fv(shader.aMVPMatrix, 1, false, mvpMatrix, 0);
+                GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
+                checkGlError("glDrawElements");
+            }
         }
 
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
@@ -208,6 +249,93 @@ class ParticleSystem {
 
 
         checkGlError("particleSystem");
+    }
+
+
+    /**
+     * 判断是否有必要继续绘制
+     * @param timeFrame
+     * @return true表示不需要
+     */
+    private boolean isSystemOver(float timeFrame) {
+        // 计算当前粒子系统生命
+        particleSystemLife -= timeFrame;
+
+        if(particleSystemLife < 0 ) {
+            if(loop) {
+                particleSystemLife = duration;
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    private long prepareLastTime = 0L;
+    /**
+     * 准备需要显示的粒子
+     * @param readyToShowPoint 存放当前粒子
+     * @param currentTime 当前时间
+     * @param timeFrame 一帧花费时间
+     */
+    private void prepareParticle(List<ParticlePoint> readyToShowPoint, long currentTime, float timeFrame) {
+
+        if(readyToShowPoint == null) {
+            return;
+        }
+        if(readyToShowPoint.size() > 0) {
+            currentParticleNum = readyToShowPoint.size();
+
+            // 粒子已经达到最大状态，不需要再最加
+            if (currentParticleNum >= maxParticles) {
+                return;
+            }
+        } else {
+            currentParticleNum = 0;
+        }
+
+
+        //rateTime内发射rate个粒子
+        //发射粒子间隔时间
+        float launchOffset = DEFAULT_LAUNCH_OFFSET_TIME;
+        if(particleEmission != null) {
+            launchOffset = particleEmission.getLaunchOffset();
+        }
+
+
+        // 发射时间内，如果个数已经达到了
+        if(currentTime - prepareLastTime < launchOffset) {
+            return ;
+        }
+        prepareLastTime = currentTime;
+
+        // 从缓存中获取
+        if(particles.size() > 0) {
+            for(ParticlePoint particlePoint : particles) {
+                // 从缓存中获取生命周期已经走完的粒子
+                if(!particlePoint.isAlive()) {
+                    setUpParticlePoint(particlePoint);
+                    readyToShowPoint.add(particlePoint);
+                    return;
+                }
+            }
+        }
+
+        // 没有找到则创建粒子
+        // 创建粒子
+        ParticlePoint particlePoint = new ParticlePoint();
+        setUpParticlePoint(particlePoint);
+
+        readyToShowPoint.add(particlePoint);
+
+        // 添加到缓存目录
+        particles.add(particlePoint);
+
+
+
+
+        
     }
 
     private void initParticle() {
@@ -275,20 +403,54 @@ class ParticleSystem {
     }
 
 
+    /**
+     * 最多粒子数量，不是指屏幕内会显示的粒子特效
+     * @param maxParticles
+     */
     public void setMaxParticles(int maxParticles) {
         this.maxParticles = maxParticles;
-        this.isInit = false;
     }
 
-    public void setDuration(int duration) {
+    /**
+     * 设置粒子系统总时长
+     * @param duration
+     */
+    public void setDuration(long duration) {
         this.duration = duration;
+        this.particleSystemLife = duration;
     }
 
+
+    /**
+     * 设置单个粒子的寿命
+     * @param lifeTime
+     */
+    public void setParticleLifeTime(long lifeTime) {
+        this.particleLifeTime = lifeTime;
+    }
+
+
+    /**
+     * 是指粒子系统是否循环
+     * @param loop
+     */
     public void setLoop(boolean loop) {
         this.loop = loop;
     }
 
+    /**
+     * 设置发射器，即生成粒子的位置
+     * @param particleShape
+     */
     public void setParticleShape(ParticleShape particleShape) {
         this.particleShape = particleShape;
+    }
+
+    /**
+     * 设置发射率，可以控制每秒发射多少个粒子
+     * @param particleEmission
+     */
+    public void setParticleEmission(ParticleEmisson particleEmission) {
+        this.particleEmission = particleEmission;
     }
 }

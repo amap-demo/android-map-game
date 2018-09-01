@@ -115,10 +115,12 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setShownSize(width,height);
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
-        particleSystem.setMaxParticles(100);
-        particleSystem.setDuration(2000);
+        particleSystem.setMaxParticles(1000);
+        particleSystem.setDuration(5000);
+        particleSystem.setParticleLifeTime(5000);
+        particleSystem.setParticleEmission(new ParticleEmisson(10, 1000));
         particleSystem.setLoop(true);
-        particleSystem.setParticleShape(new RectParticleShape(-ratio,1, ratio,-1));
+        particleSystem.setParticleShape(new RectParticleShape(-ratio,1, ratio,0.8f));
 
         BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.rain);
         particleSystem.setTexture(bitmapDescriptor);

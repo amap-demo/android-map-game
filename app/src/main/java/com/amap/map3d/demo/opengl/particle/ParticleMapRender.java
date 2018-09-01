@@ -32,6 +32,9 @@ public class ParticleMapRender implements CustomRenderer {
     private AMap aMap;
 
     private Context context;
+    private float[] mProjMatrix = new float[16];
+    private float[] mVMatrix = new float[16];
+    private float[] mMVPMatrix = new float[16];
 
     public ParticleMapRender(AMap aMap, Context context) {
         this.aMap = aMap;
@@ -58,17 +61,19 @@ public class ParticleMapRender implements CustomRenderer {
             Matrix.setIdentityM(mvp, 0);
 
             //偏移
-            PointF pointF = aMap.getProjection().toOpenGLLocation(center);
+//            PointF pointF = aMap.getProjection().toOpenGLLocation(center);
+//
+//            Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
+//
+//            Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
+//            int scale = 10000;
+//            Matrix.scaleM(mvp, 0 , scale, scale, scale);
 
-            Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
 
-            Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
-            int scale = 10000;
-            Matrix.scaleM(mvp, 0 , scale, scale, scale);
-
+            Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
 
             obj.updateParticle();
-            obj.draw(mvp);
+            obj.draw(mMVPMatrix);
         }
 //        long curTime = System.currentTimeMillis();
 //        if(curTime - lastTime > 16) {
@@ -88,16 +93,38 @@ public class ParticleMapRender implements CustomRenderer {
 
     }
 
+
+    float ratio = 1;
+    int width = 0;
+    int height = 0;
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
+        this.width = width;
+        this.height = height;
+        ratio = (float) width / height;
+        // create a projection matrix from device screen geometry
+//        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
+        Matrix.orthoM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
+        Matrix.setLookAtM(mVMatrix, 0, 0, 0, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 
+        int scale = 128;
+        obj.setTextureSize( (ratio * scale * 1.0f / width),scale * 1.0f / height);
+
+//        Matrix.frustumM(mProjMatrix, 0, 0, width, 0, height, -1, 1);
+//        Matrix.setLookAtM(mVMatrix, 0, width / 2, height /2, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         obj = new ParticleSystem();
         //绑定纹理id
-        obj.setTextureId(loadGLTexture(context, R.drawable.particle_trans_map));
+//        obj.setTextureId(loadGLTexture(context, R.drawable.snow));
+        obj.setTextureId(loadGLTexture(context, R.drawable.rain));
+
+
+
+
+
     }
 
     @Override

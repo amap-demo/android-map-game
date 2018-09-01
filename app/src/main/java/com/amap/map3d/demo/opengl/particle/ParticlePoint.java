@@ -20,13 +20,14 @@ public class ParticlePoint {
         pos[1] = position[1];
         pos[2] = position[2];
     }
-    public void setPosition(float x, float y,float z) {
+
+    public void setPosition(float x, float y, float z) {
         pos[0] = x;
         pos[1] = y;
         pos[2] = z;
     }
 
-    public void setVelocity(float x, float y,float z) {
+    public void setVelocity(float x, float y, float z) {
         vel[0] = x;
         vel[1] = y;
         vel[2] = z;
@@ -37,10 +38,11 @@ public class ParticlePoint {
         vel[1] = y;
     }
 
-    public void setColor(float r, float g,float b, float a) {
+    public void setColor(float r, float g, float b, float a) {
         color[0] = r;
         color[1] = g;
         color[2] = b;
         color[3] = a;
     }
+
 }

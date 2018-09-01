@@ -19,10 +19,10 @@ class ParticleSystem {
     public float PSIZE = 1f;
 
     float vertices[] = {
-            0, 0, 1.0f,
-            0, 1, 1.0f,
-            1, 0, 1.0f,
-            1, 1, 1.0f,
+            0 - 0.5f, 0 - 0.5f, 1f,
+            0 - 0.5f, 1 - 0.5f, 1f,
+            1 - 0.5f, 0 - 0.5f, 1f,
+            1 - 0.5f, 1 - 0.5f, 1f,
     };
 
 
@@ -66,14 +66,7 @@ class ParticleSystem {
 
         for (int i = 0; i < PARTICLECOUNT; i++) {
             ParticlePoint particle = new ParticlePoint();
-
-            particle.setPosition(random.nextFloat(), random.nextFloat(), random.nextFloat());
-            particle.life = 1.0f;
-            particle.brightness = (random.nextFloat() * 100.0f) / 700.0f + 0.003f;
-            particle.setColor(colors[i * (12 / PARTICLECOUNT)][0],
-                    colors[i * (12 / PARTICLECOUNT)][1],
-                    colors[i * (12 / PARTICLECOUNT)][2],
-                    1);
+            setUpParticlePoint(particle);
             particles.add(particle);
         }
 
@@ -91,7 +84,7 @@ class ParticleSystem {
 //        mIndexBuffer.put(indices);
 //        mIndexBuffer.position(0);
 
-        //定点坐标
+        //顶点坐标
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(vertices.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         mVertexBuffer = byteBuffer.asFloatBuffer();
@@ -126,47 +119,45 @@ class ParticleSystem {
         // move the particles
         for (int i = 0; i < PARTICLECOUNT; i++) {
             ParticlePoint particlePoint = particles.get(i);
-            // apply a gravity to the z speed, in this case
-//            particlePoint.vel[1] -= (GRAVITY * timeFrame);
 
+            // 粒子运动方式
             // move the particle according to it's speed
             particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
             particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
             particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
 
-            // Reduce Particles Life By 'brightness'
-            particlePoint.life -= particlePoint.brightness;
+//            particlePoint.life -= timeFrame;
 
-            // if the particle has died, respawn it
-            if (particlePoint.life < 0.0f)
+            if(particlePoint.pos[1] < -1) {
                 initParticle(i);
+            }
+        }
+    }
+
+    private void setUpParticlePoint(ParticlePoint particlePoint) {
+        if (particlePoint != null) {
+
+            // 初始化点
+            particlePoint.setPosition(random.nextFloat() * 2 - 1, random.nextFloat() / 10 + 1.5f, 0);
+            particlePoint.life = random.nextFloat() * 2 + 2.0f;
+//            particlePoint.brightness = (random.nextFloat() * 100.0f) / 700.0f + 0.003f;
+//            particlePoint.brightness = 0.01f;
+            particlePoint.setColor(1,1,1,1);
+//            particlePoint.setVelocity((random.nextFloat() * 2.0f) - 1.0f,
+//                    (random.nextFloat() * 3.0f) - 4.0f,
+//                    0);
+            // rain
+            particlePoint.setVelocity(-0.1f, -(random.nextFloat()  + 1.0f), 0);
+            // snow
+//            particlePoint.setVelocity(random.nextFloat() * 0.1f, -(random.nextFloat() * 0.1f + 0.1f), 0);
+
         }
     }
 
     private void initParticle(int i) {
         ParticlePoint particlePoint = particles.get(i);
-        particlePoint.life = 1.0f;
-        particlePoint.brightness = (random.nextFloat() * 100.0f) / 700.0f + 0.003f;
+        setUpParticlePoint(particlePoint);
 
-        // loop through all the particles and create new instances of each one
-        particlePoint.setPosition(0, 0, 0);
-
-        // random x and z speed between -1.0 and 1.0
-        //random y speed between 4.0 and 7.0
-//        particlePoint.setVelocity((random.nextFloat() * 2.0f) - 1.0f,
-//                (random.nextFloat() * 3.0f) - 4.0f,
-//                (random.nextFloat() * 2.0f) - 1.0f);
-        particlePoint.setVelocity((random.nextFloat() * 2.0f) - 1.0f,
-                (random.nextFloat() * 3.0f) - 4.0f,
-                (random.nextFloat() * 2.0f) - 1.0f);
-
-//        particlePoint.setVelocity((float)((5 * Math.random())-2.6f)*1.5f,
-//                                  (float)((5 * Math.random())-2.5f)*1.5f,
-//                                  (float)((5 * Math.random())-2.5f)*1.5f);
-        particlePoint.setColor(colors[col][0],
-                colors[col][1],
-                colors[col][2],
-                1);
     }
 
 
@@ -174,13 +165,11 @@ class ParticleSystem {
     public void draw(float[] mvp) {
 
         checkGlError("particle system  before draw");
-        Matrix.scaleM(mvp, 0, SCALE,SCALE,SCALE);
 
         GLES20.glUseProgram(shader.program);
-
         GLES20.glEnable(GLES20.GL_BLEND);
 
-        GLES20.glBlendFunc(GLES10.GL_SRC_ALPHA, GLES10.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glBlendColor(1.0f, 1.0f, 1.0f, 1);
 
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
@@ -232,6 +221,23 @@ class ParticleSystem {
         shader = null;
     }
 
+    public void setTextureSize(float textureWidth, float textureHeight) {
+
+
+        for (int i = 0; i < vertices.length / 3; i++) {
+            vertices[i * 3 + 0] *= textureWidth;
+            vertices[i * 3 + 1] *= textureHeight;
+
+        }
+
+        ByteBuffer byteBuffer = ByteBuffer.allocateDirect(vertices.length * 4);
+        byteBuffer.order(ByteOrder.nativeOrder());
+        mVertexBuffer = byteBuffer.asFloatBuffer();
+        mVertexBuffer.put(vertices);
+        mVertexBuffer.position(0);
+
+    }
+
 
     static class MyShader {
         String vertexShader = "precision highp float;\n" +
@@ -250,7 +256,7 @@ class ParticleSystem {
                         "        uniform sampler2D aTextureUnit0;//纹理id\n" +
                         "        uniform vec4 aColor;//颜色数组,四维坐标\n" +
                         "        void main(){\n" +
-                        "            gl_FragColor = texture2D(aTextureUnit0, texture) * aColor;\n" +
+                        "            gl_FragColor = texture2D(aTextureUnit0, texture);\n" +
                         "        }";
 
         int aVertex,aMVPMatrix,aTexture,aColor;

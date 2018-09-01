@@ -1,10 +1,14 @@
 package com.amap.map3d.demo.opengl.particle;
 
-import android.opengl.GLES10;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.util.Log;
 
+
+import com.amap.api.maps.model.BitmapDescriptor;
+import com.amap.map3d.demo.opengl.common.GLShaderManager;
+import com.amap.map3d.demo.opengl.common.GLTextureManager;
+import com.amap.map3d.demo.opengl.common.TextureItem;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -14,9 +18,7 @@ import java.util.ArrayList;
 import java.util.Random;
 
 class ParticleSystem {
-    public final int PARTICLECOUNT = 300;
-    public float GRAVITY = 10.0f;
-    public float PSIZE = 1f;
+    private int PARTICLECOUNT = 300;
 
     float vertices[] = {
             0 - 0.5f, 0 - 0.5f, 1f,
@@ -42,21 +44,14 @@ class ParticleSystem {
     public FloatBuffer mTextureBuffer;
     public ShortBuffer mIndexBuffer;
 
-    private int textureId;
-
-    public final float colors[][] =
-            {
-                    {1.0f, 0.5f, 0.5f}, {1.0f, 0.75f, 0.5f}, {1.0f, 1.0f, 0.5f}, {0.75f, 1.0f, 0.5f},
-                    {0.5f, 1.0f, 0.5f}, {0.5f, 1.0f, 0.75f}, {0.5f, 1.0f, 1.0f}, {0.5f, 0.75f, 1.0f},
-                    {0.5f, 0.5f, 1.0f}, {0.75f, 0.5f, 1.0f}, {1.0f, 0.5f, 1.0f}, {1.0f, 0.5f, 0.75f}
-            };
-
     public ArrayList<ParticlePoint> particles = new ArrayList<ParticlePoint>();
-
-
-    public void setTextureId(int textureId) {
-        this.textureId = textureId;
-    }
+    private com.amap.map3d.demo.opengl.common.GLShaderManager gLShaderManager;
+    private com.amap.map3d.demo.opengl.common.GLTextureManager glTextureManager;
+    private int width;
+    private int height;
+    private BitmapDescriptor texture;
+    private boolean isLoadTexture = false;
+    private TextureItem textureItem;
 
     private Random random;
 
@@ -70,7 +65,6 @@ class ParticleSystem {
             particles.add(particle);
         }
 
-
 //        //index
         ByteBuffer byteBuffer2 = ByteBuffer.allocateDirect(indices.length * 2);
         byteBuffer2.order(ByteOrder.nativeOrder());
@@ -78,11 +72,6 @@ class ParticleSystem {
         mIndexBuffer.put(indices);
         mIndexBuffer.position(0);
 
-//        //index
-//        mIndexBuffer = ByteBuffer.allocateDirect(indices.length);
-//        mIndexBuffer.order(ByteOrder.nativeOrder());
-//        mIndexBuffer.put(indices);
-//        mIndexBuffer.position(0);
 
         //顶点坐标
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(vertices.length * 4);
@@ -99,14 +88,7 @@ class ParticleSystem {
         mTextureBuffer.position(0);
 
     }
-
-    private float[] translate_vector = new float[4];
-    private float SCALE = 0.1F;// 缩放暂时使用这个
-
-
     long mLastTime = 0L;
-    public int col;
-    public int delay;
 
     // update the particle system, move everything
     public void updateParticle() {
@@ -125,9 +107,6 @@ class ParticleSystem {
             particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
             particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
             particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
-
-//            particlePoint.life -= timeFrame;
-
             if(particlePoint.pos[1] < -1) {
                 initParticle(i);
             }
@@ -164,6 +143,27 @@ class ParticleSystem {
 
     public void draw(float[] mvp) {
 
+
+        if(!isLoadTexture) {
+            textureItem = glTextureManager.getTextureItem(texture);
+            if(textureItem != null) {
+                isLoadTexture = true;
+
+                // 更新buffer
+                setTextureSize(textureItem.getOriWidth() * 1.0f / width , textureItem.getOriHeight() * 1.0f / height);
+
+            }
+        }
+
+        if(textureItem == null) {
+            return;
+        }
+
+        if(shader == null) {
+            initShader();
+        }
+
+
         checkGlError("particle system  before draw");
 
         GLES20.glUseProgram(shader.program);
@@ -172,7 +172,7 @@ class ParticleSystem {
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glBlendColor(1.0f, 1.0f, 1.0f, 1);
 
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureItem.getTextureID());
         GLES20.glEnableVertexAttribArray(shader.aTexture);
         GLES20.glVertexAttribPointer(shader.aTexture,2,GLES20.GL_FLOAT, false, 2 * 4,mTextureBuffer);
 
@@ -203,18 +203,6 @@ class ParticleSystem {
 
 
         checkGlError("particleSystem");
-
-
-        if (delay > 25) {
-            col++;
-            delay = 0;
-
-            if (col > 11)
-                col = 0;
-        }
-
-        delay++;
-
     }
 
     public void destroy() {
@@ -222,14 +210,11 @@ class ParticleSystem {
     }
 
     public void setTextureSize(float textureWidth, float textureHeight) {
-
-
         for (int i = 0; i < vertices.length / 3; i++) {
             vertices[i * 3 + 0] *= textureWidth;
             vertices[i * 3 + 1] *= textureHeight;
 
         }
-
         ByteBuffer byteBuffer = ByteBuffer.allocateDirect(vertices.length * 4);
         byteBuffer.order(ByteOrder.nativeOrder());
         mVertexBuffer = byteBuffer.asFloatBuffer();
@@ -238,60 +223,32 @@ class ParticleSystem {
 
     }
 
-
-    static class MyShader {
-        String vertexShader = "precision highp float;\n" +
-                "        attribute vec3 aVertex;//顶点数组,三维坐标\n" +
-                "        attribute vec2 aTexture;//颜色数组,四维坐标\n" +
-                "        uniform mat4 aMVPMatrix;//mvp矩阵\n" +
-                "        varying vec2 texture;//\n" +
-                "        void main(){\n" +
-                "            gl_Position = aMVPMatrix * vec4(aVertex, 1.0);\n" +
-                "            texture = aTexture;\n" +
-                "        }";
-
-        String fragmentShader =
-                "        precision highp float;\n" +
-                        "        varying vec2 texture;//\n" +
-                        "        uniform sampler2D aTextureUnit0;//纹理id\n" +
-                        "        uniform vec4 aColor;//颜色数组,四维坐标\n" +
-                        "        void main(){\n" +
-                        "            gl_FragColor = texture2D(aTextureUnit0, texture);\n" +
-                        "        }";
-
-        int aVertex,aMVPMatrix,aTexture,aColor;
-        int program;
-
-        public void create() {
-            int vertexLocation = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER);
-            int fragmentLocation = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER);
-
-            GLES20.glShaderSource(vertexLocation,vertexShader);
-            GLES20.glCompileShader(vertexLocation);
-
-            GLES20.glShaderSource(fragmentLocation,fragmentShader);
-            GLES20.glCompileShader(fragmentLocation);
-
-            program = GLES20.glCreateProgram();
-            GLES20.glAttachShader(program,vertexLocation);
-            GLES20.glAttachShader(program,fragmentLocation);
-            GLES20.glLinkProgram(program);
-
-
-            aVertex  = GLES20.glGetAttribLocation(program, "aVertex");
-            aTexture = GLES20.glGetAttribLocation(program,"aTexture");
-            aMVPMatrix = GLES20.glGetUniformLocation(program,"aMVPMatrix");
-            aColor = GLES20.glGetUniformLocation(program,"aColor");
-
-        }
+    public void setgLShaderManager(GLShaderManager gLShaderManager) {
+        this.gLShaderManager = gLShaderManager;
     }
 
-    static MyShader shader;
+    public void setGlTextureManager(GLTextureManager glTextureManager) {
+        this.glTextureManager = glTextureManager;
+    }
 
-    public static void initShader() {
+    public void setTexture(BitmapDescriptor texture) {
+        this.texture = texture;
+        isLoadTexture = false;
+    }
+
+    public void setShownSize(int width, int height) {
+        this.width = width;
+        this.height = height;
+    }
+
+    GLShaderManager.TextureShader shader;
+
+    private void initShader() {
         checkGlError("before init shaders1");
-        shader = new MyShader();
-        shader.create();
+        if(shader ==null) {
+            shader = gLShaderManager.getTextureShader();
+            shader.create();
+        }
         checkGlError("init shaders");
     }
 

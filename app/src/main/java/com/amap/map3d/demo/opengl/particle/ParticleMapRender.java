@@ -3,8 +3,6 @@ package com.amap.map3d.demo.opengl.particle;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.PointF;
-import android.opengl.GLES10;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
@@ -12,8 +10,12 @@ import android.opengl.Matrix;
 import com.amap.api.maps.AMap;
 import com.amap.api.maps.CameraUpdateFactory;
 import com.amap.api.maps.CustomRenderer;
+import com.amap.api.maps.model.BitmapDescriptor;
+import com.amap.api.maps.model.BitmapDescriptorFactory;
 import com.amap.api.maps.model.LatLng;
 import com.amap.map3d.demo.R;
+import com.amap.map3d.demo.opengl.common.GLShaderManager;
+import com.amap.map3d.demo.opengl.common.GLTextureManager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,7 +29,10 @@ public class ParticleMapRender implements CustomRenderer {
 
     private LatLng center = new LatLng(39.90403, 116.407525);// 北京市经纬度
 
-    private ParticleSystem obj ;
+    private ParticleSystem particleSystem;
+
+    private GLTextureManager glTextureManager = null;
+    private GLShaderManager glShaderManager = null;
 
     private AMap aMap;
 
@@ -41,6 +46,11 @@ public class ParticleMapRender implements CustomRenderer {
         this.context = context;
 
         aMap.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 14));
+
+
+        glTextureManager = new GLTextureManager(context);
+        glShaderManager = new GLShaderManager();
+
     }
 
     float offset = 0.001f;
@@ -51,13 +61,7 @@ public class ParticleMapRender implements CustomRenderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        if(obj != null) {
-
-            if(ParticleSystem.shader == null){
-                ParticleSystem.initShader();
-            }
-
-
+        if(particleSystem != null) {
             Matrix.setIdentityM(mvp, 0);
 
             //偏移
@@ -72,8 +76,8 @@ public class ParticleMapRender implements CustomRenderer {
 
             Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
 
-            obj.updateParticle();
-            obj.draw(mMVPMatrix);
+            particleSystem.updateParticle();
+            particleSystem.draw(mMVPMatrix);
         }
 //        long curTime = System.currentTimeMillis();
 //        if(curTime - lastTime > 16) {
@@ -107,23 +111,18 @@ public class ParticleMapRender implements CustomRenderer {
         Matrix.orthoM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
         Matrix.setLookAtM(mVMatrix, 0, 0, 0, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 
-        int scale = 128;
-        obj.setTextureSize( (ratio * scale * 1.0f / width),scale * 1.0f / height);
 
-//        Matrix.frustumM(mProjMatrix, 0, 0, width, 0, height, -1, 1);
-//        Matrix.setLookAtM(mVMatrix, 0, width / 2, height /2, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+        particleSystem = new ParticleSystem();
+        particleSystem.setShownSize(width,height);
+        particleSystem.setgLShaderManager(glShaderManager);
+        particleSystem.setGlTextureManager(glTextureManager);
+
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.rain);
+        particleSystem.setTexture(bitmapDescriptor);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        obj = new ParticleSystem();
-        //绑定纹理id
-//        obj.setTextureId(loadGLTexture(context, R.drawable.snow));
-        obj.setTextureId(loadGLTexture(context, R.drawable.rain));
-
-
-
-
 
     }
 
@@ -131,57 +130,14 @@ public class ParticleMapRender implements CustomRenderer {
     public void OnMapReferencechanged() {
 
     }
-    /**
-     * Load the textures
-     *
-     * @param context - The ParticleActivity context
-     * @param resourceID - The texture from the resource directory
-     */
-    public int loadGLTexture(Context context, int resourceID) {
-        int[] textures = new int[1];
-
-        if (context != null ) {
-            InputStream is = context.getResources().openRawResource(resourceID);
-            Bitmap bitmap = null;
-
-            try {
-                bitmap = BitmapFactory.decodeStream(is);
-
-            } finally {
-                try {
-                    is.close();
-                    is = null;
-                } catch (IOException e) {
-                }
-            }
-
-            //生成id，n为参数个数，textures生成之后存放的位置
-            GLES20.glGenTextures(1, textures, 0);
-            //加载纹理
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
-
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
-
-            //Use the Android GLUtils to specify a two-dimensional texture image from our bitmap
-            GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
-
-            bitmap.recycle();
-        }
-
-        return textures[0];
-    }
 
 
     public void onDestroy() {
         aMap = null;
         context = null;
-        if(obj != null) {
-            obj.destroy();
+        if(particleSystem != null) {
+            particleSystem.destroy();
         }
-        obj = null;
+        particleSystem = null;
     }
 }

@@ -18,8 +18,6 @@ import java.util.ArrayList;
 import java.util.Random;
 
 class ParticleSystem {
-    private int PARTICLECOUNT = 300;
-
     float vertices[] = {
             0 - 0.5f, 0 - 0.5f, 1f,
             0 - 0.5f, 1 - 0.5f, 1f,
@@ -54,17 +52,15 @@ class ParticleSystem {
     private TextureItem textureItem;
 
     private Random random;
+    private int maxParticles;
+    private int duration;
+    private boolean isInit;
+    private boolean loop;
+    private ParticleShape particleShape;
 
     public ParticleSystem() {
 
         random = new Random(System.currentTimeMillis());
-
-        for (int i = 0; i < PARTICLECOUNT; i++) {
-            ParticlePoint particle = new ParticlePoint();
-            setUpParticlePoint(particle);
-            particles.add(particle);
-        }
-
 //        //index
         ByteBuffer byteBuffer2 = ByteBuffer.allocateDirect(indices.length * 2);
         byteBuffer2.order(ByteOrder.nativeOrder());
@@ -90,8 +86,10 @@ class ParticleSystem {
     }
     long mLastTime = 0L;
 
-    // update the particle system, move everything
-    public void updateParticle() {
+    /**
+     * 更新每个粒子的位置
+     */
+    private void updateParticle() {
         // calculate time between frames in seconds
         long currentTime = System.currentTimeMillis();
         float timeFrame = (currentTime - mLastTime) / 1000f;
@@ -99,47 +97,44 @@ class ParticleSystem {
         mLastTime = currentTime;
 
         // move the particles
-        for (int i = 0; i < PARTICLECOUNT; i++) {
+        for (int i = 0; i < maxParticles; i++) {
             ParticlePoint particlePoint = particles.get(i);
+
+            if(particlePoint.life < 0) {
+                continue;
+            }
 
             // 粒子运动方式
             // move the particle according to it's speed
             particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
             particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
             particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
-            if(particlePoint.pos[1] < -1) {
-                initParticle(i);
+            particlePoint.life -= timeFrame * 1000;
+
+            //如果是循环的则循环处理
+            if(loop) {
+                if(particlePoint.life < 0) {
+                    setUpParticlePoint(particlePoint);
+                }
             }
+
         }
     }
 
     private void setUpParticlePoint(ParticlePoint particlePoint) {
         if (particlePoint != null) {
-
-            // 初始化点
-            particlePoint.setPosition(random.nextFloat() * 2 - 1, random.nextFloat() / 10 + 1.5f, 0);
-            particlePoint.life = random.nextFloat() * 2 + 2.0f;
-//            particlePoint.brightness = (random.nextFloat() * 100.0f) / 700.0f + 0.003f;
-//            particlePoint.brightness = 0.01f;
+            particlePoint.setPosition(particleShape.getPoint());
+//            particlePoint.setPosition(random.nextFloat() * 2 - 1, random.nextFloat() / 10 + 1.5f, 0);
+            particlePoint.life = duration;
             particlePoint.setColor(1,1,1,1);
-//            particlePoint.setVelocity((random.nextFloat() * 2.0f) - 1.0f,
-//                    (random.nextFloat() * 3.0f) - 4.0f,
-//                    0);
             // rain
             particlePoint.setVelocity(-0.1f, -(random.nextFloat()  + 1.0f), 0);
+//            particlePoint.setVelocity(0,0, 0);
             // snow
 //            particlePoint.setVelocity(random.nextFloat() * 0.1f, -(random.nextFloat() * 0.1f + 0.1f), 0);
 
         }
     }
-
-    private void initParticle(int i) {
-        ParticlePoint particlePoint = particles.get(i);
-        setUpParticlePoint(particlePoint);
-
-    }
-
-
 
     public void draw(float[] mvp) {
 
@@ -163,6 +158,13 @@ class ParticleSystem {
             initShader();
         }
 
+        if(!isInit) {
+            initParticle();
+            isInit = true;
+        }
+
+        updateParticle();
+
 
         checkGlError("particle system  before draw");
 
@@ -185,6 +187,9 @@ class ParticleSystem {
 
         // 开始画
         for (ParticlePoint particlePoint : particles) {
+            if(particlePoint.life < 0) {
+                continue;
+            }
             float[] mvpMatrix = mvp.clone();
             float[] color = particlePoint.color;
             GLES20.glUniform4f(shader.aColor,color[0], color[1], color[2], particlePoint.life);
@@ -203,6 +208,15 @@ class ParticleSystem {
 
 
         checkGlError("particleSystem");
+    }
+
+    private void initParticle() {
+
+        for (int i = 0; i < maxParticles; i++) {
+            ParticlePoint particle = new ParticlePoint();
+            setUpParticlePoint(particle);
+            particles.add(particle);
+        }
     }
 
     public void destroy() {
@@ -261,4 +275,20 @@ class ParticleSystem {
     }
 
 
+    public void setMaxParticles(int maxParticles) {
+        this.maxParticles = maxParticles;
+        this.isInit = false;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
+    }
+
+    public void setLoop(boolean loop) {
+        this.loop = loop;
+    }
+
+    public void setParticleShape(ParticleShape particleShape) {
+        this.particleShape = particleShape;
+    }
 }

@@ -1,10 +1,6 @@
 package com.amap.map3d.demo.opengl.particle;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.opengl.GLES20;
-import android.opengl.GLUtils;
 import android.opengl.Matrix;
 
 import com.amap.api.maps.AMap;
@@ -16,9 +12,8 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.map3d.demo.R;
 import com.amap.map3d.demo.opengl.common.GLShaderManager;
 import com.amap.map3d.demo.opengl.common.GLTextureManager;
-
-import java.io.IOException;
-import java.io.InputStream;
+import com.amap.map3d.demo.opengl.particle.overlife.ParticleOverLifeModule;
+import com.amap.map3d.demo.opengl.particle.overlife.RandomVelocityBetweenTwoConstants;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -94,6 +89,8 @@ public class ParticleMapRender implements CustomRenderer {
 //            aMap.moveCamera(CameraUpdateFactory.changeLatLng(center));
 //        }
 
+
+        android.util.Log.i("zxy","current particle " + particleSystem.getCurrentParticleNum());
     }
 
 
@@ -115,14 +112,26 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setShownSize(width,height);
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
+
         particleSystem.setMaxParticles(1000);
         particleSystem.setDuration(5000);
-        particleSystem.setParticleLifeTime(5000);
-        particleSystem.setParticleEmission(new ParticleEmisson(10, 1000));
+        particleSystem.setParticleEmission(new ParticleEmissonModule(20, 1000));
         particleSystem.setLoop(true);
-        particleSystem.setParticleShape(new RectParticleShape(-ratio,1, ratio,0.8f));
+        particleSystem.setParticleShapeModule(new RectParticleShape(-ratio,1, ratio,0.8f));
 
-        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.rain);
+
+        particleSystem.setParticleLifeTime(10000);
+        particleSystem.setParticleStartSpeed(1);
+        ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
+        //rain -0.1f, (-0.5,0.5), 0
+//        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.1f, -1f,0,-0.1f,-0.5f,0));
+        //snow (random.nextFloat() * 0.1f, -(random.nextFloat() * 0.1f + 0.1f), 0);
+        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.2f, -0.1f,0,0.2f,-0.2f,0));
+
+        particleSystem.setParticleOverLifeModule(particleOverLifeModule);
+
+
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.snow);
         particleSystem.setTexture(bitmapDescriptor);
     }
 

@@ -1,7 +1,5 @@
 package com.amap.map3d.demo.opengl.particle;
 
-import android.graphics.Rect;
-
 import java.util.Random;
 
 /**
@@ -9,7 +7,7 @@ import java.util.Random;
  * @data 1/9/18
  */
 
-public class RectParticleShape extends ParticleShape {
+public class RectParticleShape extends ParticleShapeModule {
 
     private Random random = new Random();
 

@@ -9,6 +9,7 @@ import com.amap.api.maps.model.BitmapDescriptor;
 import com.amap.map3d.demo.opengl.common.GLShaderManager;
 import com.amap.map3d.demo.opengl.common.GLTextureManager;
 import com.amap.map3d.demo.opengl.common.TextureItem;
+import com.amap.map3d.demo.opengl.particle.overlife.ParticleOverLifeModule;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -54,6 +55,7 @@ class ParticleSystem {
     private com.amap.map3d.demo.opengl.common.GLTextureManager glTextureManager;
     private int width;
     private int height;
+    private float ratio = 1;
     private BitmapDescriptor texture;
     private boolean isLoadTexture = false;
     private TextureItem textureItem;
@@ -72,9 +74,14 @@ class ParticleSystem {
     private long duration;
 
     /**
-     * 每个粒子的寿命
+     * 每个粒子的寿命，默认是5000ms
      */
-    private long particleLifeTime;
+    private long particleLifeTime = 5000;
+
+    /**
+     * 每个粒子开始的速度，默认是1
+     */
+    private float particleStartSpeed = 1;
 
     /**
      * 粒子系统当前生命值，开始时和duration相同
@@ -82,12 +89,14 @@ class ParticleSystem {
      */
     private long particleSystemLife;
     private boolean loop;
-    private ParticleShape particleShape;
-    private ParticleEmisson particleEmission;
+    private ParticleShapeModule particleShapeModule;
+    private ParticleEmissonModule particleEmission;
 
 
     // 记录上一次时间
     private long mLastTime = 0L;
+    private ParticleOverLifeModule particleOverLifeModule;
+
 
     public ParticleSystem() {
 
@@ -134,10 +143,10 @@ class ParticleSystem {
                     it.remove();
                     continue;
                 }
-                // 粒子运动状态更新
-                particlePoint.pos[0] += particlePoint.vel[0] * timeFrame;
-                particlePoint.pos[1] += particlePoint.vel[1] * timeFrame;
-                particlePoint.pos[2] += particlePoint.vel[2] * timeFrame;
+                // 粒子运动状态更新,速度*各个轴速度的变化* 时间系数
+                particlePoint.pos[0] += particleStartSpeed * particlePoint.vel[0] * timeFrame;
+                particlePoint.pos[1] += particleStartSpeed * particlePoint.vel[1] * timeFrame;
+                particlePoint.pos[2] += particleStartSpeed * particlePoint.vel[2] * timeFrame;
                 particlePoint.life -= timeFrame * 1000;
 
 
@@ -148,15 +157,16 @@ class ParticleSystem {
 
     private void setUpParticlePoint(ParticlePoint particlePoint) {
         if (particlePoint != null) {
-            particlePoint.setPosition(particleShape.getPoint());
-//            particlePoint.setPosition(random.nextFloat() * 2 - 1, random.nextFloat() / 10 + 1.5f, 0);
+            particlePoint.setPosition(particleShapeModule.getPoint());
             particlePoint.life = particleLifeTime;
             particlePoint.setColor(1,1,1,1);
-            // rain
-            particlePoint.setVelocity(-0.1f, -(random.nextFloat()  + 1.0f), 0);
-//            particlePoint.setVelocity(0,0, 0);
-            // snow
-//            particlePoint.setVelocity(random.nextFloat() * 0.1f, -(random.nextFloat() * 0.1f + 0.1f), 0);
+
+            if(particleOverLifeModule != null) {
+                float[] velocity = particleOverLifeModule.getVelocity();
+                particlePoint.setVelocity(velocity[0],velocity[1],velocity[2]);
+            } else {
+                particlePoint.setVelocity(1,1,1);
+            }
 
         }
     }
@@ -171,8 +181,8 @@ class ParticleSystem {
             if(textureItem != null) {
                 isLoadTexture = true;
 
-                // 更新buffer
-                setTextureSize(textureItem.getOriWidth() * 1.0f / width , textureItem.getOriHeight() * 1.0f / height);
+                // 更新buffer, 宽度乘上一个比例，因为投影矩阵的关系
+                setTextureSize(ratio * textureItem.getOriWidth() * 1.0f / width , textureItem.getOriHeight() * 1.0f / height);
 
             }
         }
@@ -338,17 +348,10 @@ class ParticleSystem {
         
     }
 
-    private void initParticle() {
-
-        for (int i = 0; i < maxParticles; i++) {
-            ParticlePoint particle = new ParticlePoint();
-            setUpParticlePoint(particle);
-            particles.add(particle);
-        }
-    }
-
     public void destroy() {
         shader = null;
+        readyToShowPoint.clear();
+        particles.clear();
     }
 
     public void setTextureSize(float textureWidth, float textureHeight) {
@@ -381,6 +384,7 @@ class ParticleSystem {
     public void setShownSize(int width, int height) {
         this.width = width;
         this.height = height;
+        this.ratio = (float) width / height;
     }
 
     GLShaderManager.TextureShader shader;
@@ -429,6 +433,14 @@ class ParticleSystem {
         this.particleLifeTime = lifeTime;
     }
 
+    /**
+     * 设置粒子发射的初始速度
+     * @param startSpeed
+     */
+    public void setParticleStartSpeed(float startSpeed) {
+        this.particleStartSpeed = startSpeed;
+    }
+
 
     /**
      * 是指粒子系统是否循环
@@ -440,17 +452,33 @@ class ParticleSystem {
 
     /**
      * 设置发射器，即生成粒子的位置
-     * @param particleShape
+     * @param particleShapeModule
      */
-    public void setParticleShape(ParticleShape particleShape) {
-        this.particleShape = particleShape;
+    public void setParticleShapeModule(ParticleShapeModule particleShapeModule) {
+        this.particleShapeModule = particleShapeModule;
     }
 
     /**
      * 设置发射率，可以控制每秒发射多少个粒子
      * @param particleEmission
      */
-    public void setParticleEmission(ParticleEmisson particleEmission) {
+    public void setParticleEmission(ParticleEmissonModule particleEmission) {
         this.particleEmission = particleEmission;
+    }
+
+    /**
+     * 获取当前粒子数量
+     * @return
+     */
+    public int getCurrentParticleNum() {
+        return currentParticleNum;
+    }
+
+    /**
+     * 设置粒子在生命周期内的变化
+     * @param particleOverLifeModule
+     */
+    public void setParticleOverLifeModule(ParticleOverLifeModule particleOverLifeModule) {
+        this.particleOverLifeModule = particleOverLifeModule;
     }
 }

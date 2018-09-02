@@ -2,16 +2,12 @@ package com.amap.map3d.demo.opengl.common;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 
 import com.amap.api.maps.model.BitmapDescriptor;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Hashtable;
-import java.util.List;
 
 /**
  * @author zxy
@@ -102,5 +98,7 @@ public class GLTextureManager {
     }
 
 
+    public void setSize(int width, int height) {
 
+    }
 }

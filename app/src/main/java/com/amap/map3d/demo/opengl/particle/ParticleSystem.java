@@ -20,7 +20,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
-class ParticleSystem {
+public class ParticleSystem {
+
+    private String DEBUG_TAG = "particle";
+    public boolean DEBUG_LOG = false;
+
     /**
      * 默认发射率，每秒发射10个， 每100ms发射一个
      */
@@ -321,20 +325,30 @@ class ParticleSystem {
         }
         prepareLastTime = currentTime;
 
+
         // * 1000 转换为毫秒
-        int perLaunchCount = (int) Math.round(timeFrame * 1000.0 / launchOffset);
+        int perLaunchCount = (int) Math.ceil(timeFrame * 1000.0 / launchOffset);
 
+        if(DEBUG_LOG) {
+            android.util.Log.i(DEBUG_TAG, "frameTime： " + timeFrame + " launch_offset " + launchOffset + " launch_count " + perLaunchCount + " current num " + currentParticleNum);
+        }
 
-        for (int i = 0; i < perLaunchCount; i++) {
+        for (int i = 0; i < perLaunchCount && i < (maxParticles - currentParticleNum); i++) {
             // 从缓存中获取
             if(particles.size() > 0) {
+                boolean hasFound = false;
                 for(ParticlePoint particlePoint : particles) {
                     // 从缓存中获取生命周期已经走完的粒子
                     if(!particlePoint.isAlive()) {
                         setUpParticlePoint(particlePoint);
                         readyToShowPoint.add(particlePoint);
-                        continue;
+                        hasFound = true;
+                        break;
                     }
+                }
+                // 如果从缓存中取到了则继续下一轮循环
+                if(hasFound) {
+                    continue;
                 }
             }
 

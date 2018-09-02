@@ -19,12 +19,23 @@ public class ParticleOverLifeModule {
      * 粒子速度
      */
     float[] velocity = new float[3];
+
+    /**
+     * 缩放比例
+     */
+    float[] size = {1,1,1};
+
     private RotationOverLife rotateOverLife;
+    private SizeOverLife sizeOverLife;
 
     public ParticleOverLifeModule() {
         velocity[0] = 1;
         velocity[1] = 1;
-        velocity[1] = 1;
+        velocity[2] = 1;
+
+        size[0] = 1;
+        size[1] = 1;
+        size[2] = 1;
     }
 
     public void setVelocityOverLife(VelocityOverLife overLife) {
@@ -35,6 +46,20 @@ public class ParticleOverLifeModule {
         this.rotateOverLife = rotateOverLife;
     }
 
+
+    public void setSizeOverLife(SizeOverLife sizeOverLife) {
+        this.sizeOverLife = sizeOverLife;
+    }
+
+    public float[] getSize(float timeFrame) {
+        if(sizeOverLife != null) {
+            size[0] = sizeOverLife.getSizeX(timeFrame);
+            size[1] = sizeOverLife.getSizeY(timeFrame);
+            size[2] = sizeOverLife.getSizeZ(timeFrame);
+            return size;
+        }
+        return null;
+    }
 
 
     public float getRotate() {

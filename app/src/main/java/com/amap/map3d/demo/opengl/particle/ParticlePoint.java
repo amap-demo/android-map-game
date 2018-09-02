@@ -15,7 +15,11 @@ public class ParticlePoint {
     // Color
     public float[] color = new float[4];
 
+    // 旋转角度
     public float rotate = 0;
+
+    //缩放比例
+    public float[] scale = {1,1,1};
 
     public void setPosition(float[] position) {
         pos[0] = position[0];
@@ -61,5 +65,11 @@ public class ParticlePoint {
 
     public void setRotate(float rotate) {
         this.rotate = rotate;
+    }
+
+    public void setScale(float x, float y, float z) {
+        scale[0] = x;
+        scale[1] = y;
+        scale[2] = z;
     }
 }

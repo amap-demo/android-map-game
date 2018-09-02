@@ -87,6 +87,18 @@ public class ParticleSystem {
      */
     private long particleLifeTime = 5000;
 
+
+    /**
+     * 每个粒子开始的角度，默认是0
+     */
+    private float particleStartRotate = 0;
+
+    /**
+     * 每个粒子开始的缩放比例，默认是{1,1,1}
+     */
+    private float[] particleStartScale = {1,1,1};
+
+
     /**
      * 每个粒子开始的速度，默认是1
      */
@@ -169,6 +181,14 @@ public class ParticleSystem {
                     if(rotate_rate != 0) {
                         particlePoint.rotate += rotate_rate * timeFrame;
                     }
+
+                    float[] size = particleOverLifeModule.getSize(timeFrame);
+                    if(size != null) {
+                        particlePoint.scale[0] += size[0];
+                        particlePoint.scale[1] += size[1];
+                        particlePoint.scale[2] += size[2];
+                    }
+
                 }
 
 
@@ -192,6 +212,11 @@ public class ParticleSystem {
             } else {
                 particlePoint.setVelocity(1,1,1);
             }
+
+            // 默认缩放比例
+            particlePoint.setScale(particleStartScale[0],particleStartScale[1],particleStartScale[2]);
+            // 默认角度
+            particlePoint.setRotate(particleStartRotate);
 
         }
     }
@@ -292,6 +317,8 @@ public class ParticleSystem {
                 float rotate = particlePoint.getRotate();
                 Matrix.rotateM(mvpMatrix, 0,rotate, 0, 0 , 1);
 
+                float[] scale = particlePoint.scale;
+                Matrix.scaleM(mvpMatrix, 0, scale[0],scale[1],scale[2]);
 
 
                 GLES20.glUniformMatrix4fv(shader.aMVPMatrix, 1, false, mvpMatrix, 0);

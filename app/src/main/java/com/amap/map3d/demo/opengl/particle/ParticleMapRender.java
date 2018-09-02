@@ -12,6 +12,8 @@ import com.amap.api.maps.model.LatLng;
 import com.amap.map3d.demo.R;
 import com.amap.map3d.demo.opengl.common.GLShaderManager;
 import com.amap.map3d.demo.opengl.common.GLTextureManager;
+import com.amap.map3d.demo.opengl.particle.overlife.ConstantRotationOverLife;
+import com.amap.map3d.demo.opengl.particle.overlife.CurveSizeOverLife;
 import com.amap.map3d.demo.opengl.particle.overlife.ParticleOverLifeModule;
 import com.amap.map3d.demo.opengl.particle.overlife.RandomVelocityBetweenTwoConstants;
 
@@ -72,6 +74,7 @@ public class ParticleMapRender implements CustomRenderer {
                     //            int scale = 10000;
                     //            Matrix.scaleM(mvp, 0 , scale, scale, scale);
 
+
                     Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
 
                     particleSystem.draw(mMVPMatrix);
@@ -107,15 +110,87 @@ public class ParticleMapRender implements CustomRenderer {
         this.height = height;
         ratio = (float) width / height;
         // create a projection matrix from device screen geometry
-//        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
-        Matrix.orthoM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
-        Matrix.setLookAtM(mVMatrix, 0, 0, 0, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
+        // 从屏幕上往屏幕下看
+        Matrix.setLookAtM(mVMatrix, 0, 0, 0, 3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 
 
 //        particleSystemList.add(generateSnowParticle());
-        particleSystemList.add(generateRainParticle());
-        particleSystemList.add(generateCloudParticle());
+//        particleSystemList.add(generateRainParticle());
+//        particleSystemList.add(generateCloudParticle());
+        particleSystemList.addAll(generateSunParticles());
     }
+
+    private List<ParticleSystem> generateSunParticles() {
+        List<ParticleSystem> list = new ArrayList<ParticleSystem>();
+
+        // 从左到右
+        float speed_x = 0f;
+        long particleLifeTime = 10000;
+
+        float top = 0.5f;
+        float bottom = top;
+
+        ParticleSystem particleSystem = new ParticleSystem();
+        particleSystem.setgLShaderManager(glShaderManager);
+        particleSystem.setGlTextureManager(glTextureManager);
+
+        particleSystem.setMaxParticles(1);
+        particleSystem.setDuration(particleLifeTime / 4);
+        particleSystem.setParticleEmission(new ParticleEmissonModule(1, (int) (particleLifeTime / 4)));
+        particleSystem.setLoop(true);
+        particleSystem.setParticleShapeModule(new SinglePointParticleShape(-ratio,1,0));
+
+        particleSystem.setParticleLifeTime(particleLifeTime / 4);
+        particleSystem.setParticleStartSpeed(0);
+
+
+        // 设置粒子生命周期内的变化过程
+        ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
+        // 设置缩放比例变化规律
+        particleOverLifeModule.setSizeOverLife(new CurveSizeOverLife());
+
+        particleSystem.setParticleOverLifeModule(particleOverLifeModule);
+
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.sun_0_2);
+        particleSystem.setTexture(bitmapDescriptor);
+        // 乘上一个比例，正好铺满屏幕
+        particleSystem.setStartParticleSize(ratio*4);// 默认铺满
+
+        list.add(particleSystem);
+
+
+        particleSystem = new ParticleSystem();
+        particleSystem.setgLShaderManager(glShaderManager);
+        particleSystem.setGlTextureManager(glTextureManager);
+
+        particleSystem.setMaxParticles(1);
+        particleSystem.setDuration(particleLifeTime);
+        particleSystem.setParticleEmission(new ParticleEmissonModule(1, (int) (particleLifeTime / 2)));
+        particleSystem.setLoop(true);
+        particleSystem.setParticleShapeModule(new SinglePointParticleShape(-ratio,1,0));
+
+        particleSystem.setParticleLifeTime(particleLifeTime);
+        particleSystem.setParticleStartSpeed(0);
+
+        // 设置粒子生命周期内的变化过程
+        particleOverLifeModule = new ParticleOverLifeModule();
+        // 设置旋转角度变化规律
+        particleOverLifeModule.setRotateOverLife(new ConstantRotationOverLife(45));
+        particleSystem.setParticleOverLifeModule(particleOverLifeModule);
+
+        bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.sun_1_2);
+        particleSystem.setTexture(bitmapDescriptor);
+        // 将图标放大10倍
+        particleSystem.setStartParticleSize(ratio*2, ratio*2);// 默认铺满
+        list.add(particleSystem);
+
+
+
+
+        return list;
+    }
+
 
     private ParticleSystem generateCloudParticle() {
 
@@ -128,15 +203,16 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
 
-        particleSystem.setMaxParticles(2);
+        particleSystem.setMaxParticles(1);
         particleSystem.setDuration(particleLifeTime);
         particleSystem.setParticleEmission(new ParticleEmissonModule(1, (int) (particleLifeTime / 2)));
         particleSystem.setLoop(true);
-        particleSystem.setParticleShapeModule(new RectParticleShape(ratio,0.8f, ratio,0.6f));
+        // ratio
+        particleSystem.setParticleShapeModule(new RectParticleShape(0,0.6f, 0,0.6f));
 
         particleSystem.setPreWraw(true);
         particleSystem.setParticleLifeTime(particleLifeTime);
-        particleSystem.setParticleStartSpeed(1);
+        particleSystem.setParticleStartSpeed(0);
         ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
         particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-speed_x, -0f,0,-speed_x,0f,0));
         particleSystem.setParticleOverLifeModule(particleOverLifeModule);

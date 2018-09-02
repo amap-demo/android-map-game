@@ -114,6 +114,38 @@ public class ParticleMapRender implements CustomRenderer {
 
 //        particleSystemList.add(generateSnowParticle());
         particleSystemList.add(generateRainParticle());
+        particleSystemList.add(generateCloudParticle());
+    }
+
+    private ParticleSystem generateCloudParticle() {
+
+        // 从左到右
+        float speed_x = 0.2f;
+        long particleLifeTime = 10000;
+
+        ParticleSystem particleSystem = new ParticleSystem();
+        particleSystem.setShownSize(width,height);
+        particleSystem.setgLShaderManager(glShaderManager);
+        particleSystem.setGlTextureManager(glTextureManager);
+
+        particleSystem.setMaxParticles(2);
+        particleSystem.setDuration(particleLifeTime);
+        particleSystem.setParticleEmission(new ParticleEmissonModule(1, (int) (particleLifeTime / 2)));
+        particleSystem.setLoop(true);
+        particleSystem.setParticleShapeModule(new RectParticleShape(ratio,0.8f, ratio,0.6f));
+
+        particleSystem.setPreWraw(true);
+        particleSystem.setParticleLifeTime(particleLifeTime);
+        particleSystem.setParticleStartSpeed(1);
+        ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
+        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-speed_x, -0f,0,-speed_x,0f,0));
+        particleSystem.setParticleOverLifeModule(particleOverLifeModule);
+
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.cloud);
+        particleSystem.setTexture(bitmapDescriptor);
+        // 将图标放大10倍
+        particleSystem.setStartParticleSize(10);
+        return particleSystem;
     }
 
     private ParticleSystem generateSnowParticle() {

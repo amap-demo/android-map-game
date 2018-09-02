@@ -39,10 +39,10 @@ public class ParticleSystem {
 
 
     float textureUV[] = {
-            0.0f, 0.0f,
             0.0f, 1.0f,
-            1.0f, 0.0f,
+            0.0f, 0.0f,
             1.0f, 1.0f,
+            1.0f, 0.0f,
     };
 
     short indices[] = {
@@ -63,6 +63,10 @@ public class ParticleSystem {
     private BitmapDescriptor texture;
     private boolean isLoadTexture = false;
     private TextureItem textureItem;
+    /**
+     * 粒子默认大小倍数
+     */
+    private float startParticleSize = 1;
 
     private Random random;
     private int maxParticles;
@@ -103,6 +107,7 @@ public class ParticleSystem {
     private boolean preWraw;
 
 
+
     public ParticleSystem() {
 
         random = new Random(System.currentTimeMillis());
@@ -127,6 +132,11 @@ public class ParticleSystem {
         mTextureBuffer = byteBuffer1.asFloatBuffer();
         mTextureBuffer.put(textureUV);
         mTextureBuffer.position(0);
+
+
+        if(DEBUG_LOG) {
+            android.util.Log.i(DEBUG_TAG,"ParticleSystem()");
+        }
 
     }
 
@@ -187,7 +197,8 @@ public class ParticleSystem {
                 isLoadTexture = true;
 
                 // 更新buffer, 宽度乘上一个比例，因为投影矩阵的关系
-                setTextureSize(ratio * textureItem.getOriWidth() * 1.0f / width , textureItem.getOriHeight() * 1.0f / height);
+                setTextureSize(startParticleSize * ratio * textureItem.getOriWidth() * 1.0f / width ,
+                        startParticleSize * textureItem.getOriHeight() * 1.0f / height);
 
             }
         }
@@ -207,6 +218,10 @@ public class ParticleSystem {
         // calculate time between frames in seconds
         long currentTime = System.currentTimeMillis();
         float timeFrame = (currentTime - mLastTime) / 1000f;
+        if(mLastTime == 0) {
+            timeFrame = 0;
+        }
+
 
         mLastTime = currentTime;
 
@@ -214,8 +229,16 @@ public class ParticleSystem {
             return;
         }
 
+        if(DEBUG_LOG) {
+            android.util.Log.i(DEBUG_TAG,"prepareParticle()");
+        }
+
         // 准备需要绘制的粒子
         prepareParticle(readyToShowPoint,currentTime,timeFrame);
+
+        if(DEBUG_LOG) {
+            android.util.Log.i(DEBUG_TAG,"updateParticle () number " + readyToShowPoint.size());
+        }
 
         updateParticle(readyToShowPoint, timeFrame);
 
@@ -304,6 +327,9 @@ public class ParticleSystem {
 
             // 粒子已经达到最大状态，不需要再最加
             if (currentParticleNum >= maxParticles) {
+                if(DEBUG_LOG) {
+                    android.util.Log.i(DEBUG_TAG, "prepareParticle () return num is max " + readyToShowPoint.size());
+                }
                 return;
             }
         } else {
@@ -319,15 +345,29 @@ public class ParticleSystem {
         }
 
 
-        // 发射时间内，如果个数已经达到了
-        if(currentTime - prepareLastTime < launchOffset) {
-            return ;
+        // * 1000 转换为毫秒
+        int perLaunchCount = (int) Math.ceil(timeFrame * 1000.0 / launchOffset);
+
+        if(perLaunchCount == 0) {
+            if (DEBUG_LOG) {
+                android.util.Log.i(DEBUG_TAG, "prepareParticle () return perLaunchCount is 0" + readyToShowPoint.size());
+            }
+            return;
+        }
+
+        if(prepareLastTime != 0) {
+            // 发射时间内，如果个数已经达到了
+            if (currentTime - prepareLastTime < launchOffset) {
+                if (DEBUG_LOG) {
+                    android.util.Log.i(DEBUG_TAG, "prepareParticle () return time is too close  time " + (currentTime - prepareLastTime) + " " + readyToShowPoint.size());
+                }
+                return;
+            }
         }
         prepareLastTime = currentTime;
 
 
-        // * 1000 转换为毫秒
-        int perLaunchCount = (int) Math.ceil(timeFrame * 1000.0 / launchOffset);
+
 
         if(DEBUG_LOG) {
             android.util.Log.i(DEBUG_TAG, "frameTime： " + timeFrame + " launch_offset " + launchOffset + " launch_count " + perLaunchCount + " current num " + currentParticleNum);
@@ -389,6 +429,15 @@ public class ParticleSystem {
         mVertexBuffer.put(vertices);
         mVertexBuffer.position(0);
 
+    }
+
+
+    /**
+     * 设置粒子默认大小，放大倍数
+     * @param startParticleSize
+     */
+    public void setStartParticleSize(float startParticleSize) {
+        this.startParticleSize = startParticleSize;
     }
 
     public void setgLShaderManager(GLShaderManager gLShaderManager) {
@@ -512,4 +561,5 @@ public class ParticleSystem {
     public void setPreWraw(boolean preWraw) {
         this.preWraw = preWraw;
     }
+
 }

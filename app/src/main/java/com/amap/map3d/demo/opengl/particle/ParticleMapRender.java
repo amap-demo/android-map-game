@@ -50,6 +50,16 @@ public class ParticleMapRender implements CustomRenderer {
         glTextureManager = new GLTextureManager(context);
         glShaderManager = new GLShaderManager();
 
+        aMap.setOnMapLoadedListener(new AMap.OnMapLoadedListener() {
+            @Override
+            public void onMapLoaded() {
+                particleSystemList.add(generateSnowParticle());
+                particleSystemList.add(generateRainParticle());
+                particleSystemList.add(generateCloudParticle());
+//        particleSystemList.addAll(generateSunParticles());
+            }
+        });
+
     }
 
     float offset = 0.001f;
@@ -114,11 +124,6 @@ public class ParticleMapRender implements CustomRenderer {
         // 从屏幕上往屏幕下看
         Matrix.setLookAtM(mVMatrix, 0, 0, 0, 3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 
-
-//        particleSystemList.add(generateSnowParticle());
-//        particleSystemList.add(generateRainParticle());
-//        particleSystemList.add(generateCloudParticle());
-        particleSystemList.addAll(generateSunParticles());
     }
 
     private List<ParticleSystem> generateSunParticles() {
@@ -181,7 +186,6 @@ public class ParticleMapRender implements CustomRenderer {
 
         bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.sun_1_2);
         particleSystem.setTexture(bitmapDescriptor);
-        // 将图标放大10倍
         particleSystem.setStartParticleSize(ratio*2, ratio*2);// 默认铺满
         list.add(particleSystem);
 
@@ -203,24 +207,32 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
 
-        particleSystem.setMaxParticles(1);
+        particleSystem.setMaxParticles(5);
         particleSystem.setDuration(particleLifeTime);
-        particleSystem.setParticleEmission(new ParticleEmissonModule(1, (int) (particleLifeTime / 2)));
+        particleSystem.setParticleEmission(new ParticleEmissonModule(2, (int) (particleLifeTime)));
         particleSystem.setLoop(true);
-        // ratio
-        particleSystem.setParticleShapeModule(new RectParticleShape(0,0.6f, 0,0.6f));
+
 
         particleSystem.setPreWraw(true);
         particleSystem.setParticleLifeTime(particleLifeTime);
-        particleSystem.setParticleStartSpeed(0);
+        particleSystem.setParticleStartSpeed(1);
         ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
-        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-speed_x, -0f,0,-speed_x,0f,0));
+        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(speed_x, -0f,0,speed_x,0f,0));
         particleSystem.setParticleOverLifeModule(particleOverLifeModule);
 
+
+        // 获取图标
         BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.cloud);
         particleSystem.setTexture(bitmapDescriptor);
-        // 将图标放大10倍
-        particleSystem.setStartParticleSize(10);
+
+        particleSystem.setStartParticleSize(2*ratio,1);
+
+        // 设置发射位置，从左往右正好出来, 固定左边位置，right = left
+        // 画出来的宽度是2*ratio，则将起点视为设置在- 2*ratio / 2  - ratio的位置
+        float start_x = - 2*ratio;
+        particleSystem.setParticleShapeModule(new RectParticleShape(start_x,0.7f, start_x,0.6f));
+
+
         return particleSystem;
     }
 
@@ -248,16 +260,18 @@ public class ParticleMapRender implements CustomRenderer {
 
         BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.snow);
         particleSystem.setTexture(bitmapDescriptor);
+
+        particleSystem.setStartParticleSize((float)bitmapDescriptor.getWidth() / width );
+
         return particleSystem;
     }
     private ParticleSystem generateRainParticle() {
         ParticleSystem particleSystem = new ParticleSystem();
-        particleSystem.setShownSize(width,height);
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
         particleSystem.setMaxParticles(1000);
         particleSystem.setDuration(5000);
-        particleSystem.setParticleEmission(new ParticleEmissonModule(100, 1000));
+        particleSystem.setParticleEmission(new ParticleEmissonModule(50, 1000));
         particleSystem.setLoop(true);
         particleSystem.setParticleShapeModule(new RectParticleShape(-ratio,1, ratio,0.8f));
         // rain
@@ -266,10 +280,17 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setParticleStartSpeed(1);
         ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
         //rain -0.1f, (-0.5,0.5), 0
-        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.1f, -2f,0,-0.1f,-1f,0));
+        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(0.1f, -2f,0,-0.1f,-1f,0));
         particleSystem.setParticleOverLifeModule(particleOverLifeModule);
         BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.rain);
         particleSystem.setTexture(bitmapDescriptor);
+
+
+
+
+        //修正一下比例
+        particleSystem.setStartParticleSize((float)bitmapDescriptor.getWidth() * 2 / width );
+
         return particleSystem;
     }
 

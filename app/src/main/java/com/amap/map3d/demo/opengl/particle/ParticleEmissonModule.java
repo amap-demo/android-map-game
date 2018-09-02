@@ -13,7 +13,7 @@ public class ParticleEmissonModule {
 
     /**
      * rateTime内发射rate个粒子
-     * @param rate 发射数量
+     * @param rate 发射数量 不能为0
      * @param rateTime 间隔时间
      */
     public ParticleEmissonModule(int rate, int rateTime) {

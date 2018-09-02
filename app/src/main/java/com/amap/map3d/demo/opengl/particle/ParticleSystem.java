@@ -96,6 +96,7 @@ class ParticleSystem {
     // 记录上一次时间
     private long mLastTime = 0L;
     private ParticleOverLifeModule particleOverLifeModule;
+    private boolean preWraw;
 
 
     public ParticleSystem() {
@@ -320,27 +321,35 @@ class ParticleSystem {
         }
         prepareLastTime = currentTime;
 
-        // 从缓存中获取
-        if(particles.size() > 0) {
-            for(ParticlePoint particlePoint : particles) {
-                // 从缓存中获取生命周期已经走完的粒子
-                if(!particlePoint.isAlive()) {
-                    setUpParticlePoint(particlePoint);
-                    readyToShowPoint.add(particlePoint);
-                    return;
+        // * 1000 转换为毫秒
+        int perLaunchCount = (int) Math.round(timeFrame * 1000.0 / launchOffset);
+
+
+        for (int i = 0; i < perLaunchCount; i++) {
+            // 从缓存中获取
+            if(particles.size() > 0) {
+                for(ParticlePoint particlePoint : particles) {
+                    // 从缓存中获取生命周期已经走完的粒子
+                    if(!particlePoint.isAlive()) {
+                        setUpParticlePoint(particlePoint);
+                        readyToShowPoint.add(particlePoint);
+                        continue;
+                    }
                 }
             }
+
+            // 没有找到则创建粒子
+            // 创建粒子
+            ParticlePoint particlePoint = new ParticlePoint();
+            setUpParticlePoint(particlePoint);
+
+            readyToShowPoint.add(particlePoint);
+
+            // 添加到缓存目录
+            particles.add(particlePoint);
         }
 
-        // 没有找到则创建粒子
-        // 创建粒子
-        ParticlePoint particlePoint = new ParticlePoint();
-        setUpParticlePoint(particlePoint);
 
-        readyToShowPoint.add(particlePoint);
-
-        // 添加到缓存目录
-        particles.add(particlePoint);
 
 
 
@@ -480,5 +489,13 @@ class ParticleSystem {
      */
     public void setParticleOverLifeModule(ParticleOverLifeModule particleOverLifeModule) {
         this.particleOverLifeModule = particleOverLifeModule;
+    }
+
+    /**
+     * 是否开启预制系统，开启之后，会直接展示一个周期后的粒子效果
+     * @param preWraw
+     */
+    public void setPreWraw(boolean preWraw) {
+        this.preWraw = preWraw;
     }
 }

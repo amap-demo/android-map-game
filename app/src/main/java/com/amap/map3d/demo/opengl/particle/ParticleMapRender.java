@@ -15,6 +15,9 @@ import com.amap.map3d.demo.opengl.common.GLTextureManager;
 import com.amap.map3d.demo.opengl.particle.overlife.ParticleOverLifeModule;
 import com.amap.map3d.demo.opengl.particle.overlife.RandomVelocityBetweenTwoConstants;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -24,7 +27,6 @@ public class ParticleMapRender implements CustomRenderer {
 
     private LatLng center = new LatLng(39.90403, 116.407525);// 北京市经纬度
 
-    private ParticleSystem particleSystem;
 
     private GLTextureManager glTextureManager = null;
     private GLShaderManager glShaderManager = null;
@@ -56,42 +58,44 @@ public class ParticleMapRender implements CustomRenderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-        if(particleSystem != null) {
-            Matrix.setIdentityM(mvp, 0);
+        if(particleSystemList.size() > 0) {
+            for (ParticleSystem particleSystem : particleSystemList) {
+                if (particleSystem != null) {
+                    Matrix.setIdentityM(mvp, 0);
 
-            //偏移
-//            PointF pointF = aMap.getProjection().toOpenGLLocation(center);
-//
-//            Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
-//
-//            Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
-//            int scale = 10000;
-//            Matrix.scaleM(mvp, 0 , scale, scale, scale);
+                    //偏移
+                    //            PointF pointF = aMap.getProjection().toOpenGLLocation(center);
+                    //
+                    //            Matrix.multiplyMM(mvp,0, aMap.getProjectionMatrix(),0,aMap.getViewMatrix(),0);
+                    //
+                    //            Matrix.translateM(mvp, 0 , pointF.x , pointF.y  , 0);
+                    //            int scale = 10000;
+                    //            Matrix.scaleM(mvp, 0 , scale, scale, scale);
 
+                    Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
 
-            Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
-
-            particleSystem.draw(mMVPMatrix);
+                    particleSystem.draw(mMVPMatrix);
+                }
+                //        long curTime = System.currentTimeMillis();
+                //        if(curTime - lastTime > 16) {
+                //
+                //
+                //            lastTime = curTime;
+                //
+                //            //来回移动
+                ////            offset = -offset;
+                //            center = new LatLng(center.latitude + offset,center.longitude);
+                //
+                //            //重新计算偏移位置
+                //            calScaleAndTranslate();
+                //
+                //            aMap.moveCamera(CameraUpdateFactory.changeLatLng(center));
+                //        }
+            }
         }
-//        long curTime = System.currentTimeMillis();
-//        if(curTime - lastTime > 16) {
-//
-//
-//            lastTime = curTime;
-//
-//            //来回移动
-////            offset = -offset;
-//            center = new LatLng(center.latitude + offset,center.longitude);
-//
-//            //重新计算偏移位置
-//            calScaleAndTranslate();
-//
-//            aMap.moveCamera(CameraUpdateFactory.changeLatLng(center));
-//        }
-
-
-        android.util.Log.i("zxy","current particle " + particleSystem.getCurrentParticleNum());
     }
+
+    List<ParticleSystem> particleSystemList = new ArrayList<ParticleSystem>();
 
 
     float ratio = 1;
@@ -108,7 +112,12 @@ public class ParticleMapRender implements CustomRenderer {
         Matrix.setLookAtM(mVMatrix, 0, 0, 0, -3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
 
 
-        particleSystem = new ParticleSystem();
+//        particleSystemList.add(generateSnowParticle());
+        particleSystemList.add(generateRainParticle());
+    }
+
+    private ParticleSystem generateSnowParticle() {
+        ParticleSystem particleSystem = new ParticleSystem();
         particleSystem.setShownSize(width,height);
         particleSystem.setgLShaderManager(glShaderManager);
         particleSystem.setGlTextureManager(glTextureManager);
@@ -120,19 +129,40 @@ public class ParticleMapRender implements CustomRenderer {
         particleSystem.setParticleShapeModule(new RectParticleShape(-ratio,1, ratio,0.8f));
 
 
+        // snow
+        particleSystem.setPreWraw(true);
         particleSystem.setParticleLifeTime(10000);
         particleSystem.setParticleStartSpeed(1);
         ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
-        //rain -0.1f, (-0.5,0.5), 0
-//        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.1f, -1f,0,-0.1f,-0.5f,0));
         //snow (random.nextFloat() * 0.1f, -(random.nextFloat() * 0.1f + 0.1f), 0);
         particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.2f, -0.1f,0,0.2f,-0.2f,0));
-
         particleSystem.setParticleOverLifeModule(particleOverLifeModule);
-
 
         BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.snow);
         particleSystem.setTexture(bitmapDescriptor);
+        return particleSystem;
+    }
+    private ParticleSystem generateRainParticle() {
+        ParticleSystem particleSystem = new ParticleSystem();
+        particleSystem.setShownSize(width,height);
+        particleSystem.setgLShaderManager(glShaderManager);
+        particleSystem.setGlTextureManager(glTextureManager);
+        particleSystem.setMaxParticles(1000);
+        particleSystem.setDuration(5000);
+        particleSystem.setParticleEmission(new ParticleEmissonModule(100, 1000));
+        particleSystem.setLoop(true);
+        particleSystem.setParticleShapeModule(new RectParticleShape(-ratio,1, ratio,0.8f));
+        // rain
+        particleSystem.setPreWraw(true);
+        particleSystem.setParticleLifeTime(5000);
+        particleSystem.setParticleStartSpeed(1);
+        ParticleOverLifeModule particleOverLifeModule = new ParticleOverLifeModule();
+        //rain -0.1f, (-0.5,0.5), 0
+        particleOverLifeModule.setVelocityOverLife(new RandomVelocityBetweenTwoConstants(-0.1f, -2f,0,-0.1f,-1f,0));
+        particleSystem.setParticleOverLifeModule(particleOverLifeModule);
+        BitmapDescriptor bitmapDescriptor = BitmapDescriptorFactory.fromResource(R.drawable.rain);
+        particleSystem.setTexture(bitmapDescriptor);
+        return particleSystem;
     }
 
     @Override
@@ -149,9 +179,13 @@ public class ParticleMapRender implements CustomRenderer {
     public void onDestroy() {
         aMap = null;
         context = null;
-        if(particleSystem != null) {
-            particleSystem.destroy();
+
+        for(ParticleSystem particleSystem : particleSystemList) {
+            if (particleSystem != null) {
+                particleSystem.destroy();
+            }
+            particleSystem = null;
         }
-        particleSystem = null;
+        particleSystemList.clear();
     }
 }

@@ -31,10 +31,10 @@ public class ParticleSystem {
     private static final int DEFAULT_LAUNCH_OFFSET_TIME = 100;
 
     float vertices[] = {
-            0 - 0.5f, 0 - 0.5f, 1f,
-            0 - 0.5f, 1 - 0.5f, 1f,
-            1 - 0.5f, 0 - 0.5f, 1f,
-            1 - 0.5f, 1 - 0.5f, 1f,
+            0 - 0.5f, 0 - 0.5f, 0f,
+            0 - 0.5f, 1 - 0.5f, 0f,
+            1 - 0.5f, 0 - 0.5f, 0f,
+            1 - 0.5f, 1 - 0.5f, 0f,
     };
 
 
@@ -66,7 +66,8 @@ public class ParticleSystem {
     /**
      * 粒子默认大小倍数
      */
-    private float startParticleSize = 1;
+    private float startParticleSize_x = 1;
+    private float startParticleSize_y = 1;
 
     private Random random;
     private int maxParticles;
@@ -162,6 +163,15 @@ public class ParticleSystem {
                 particlePoint.pos[0] += particleStartSpeed * particlePoint.vel[0] * timeFrame;
                 particlePoint.pos[1] += particleStartSpeed * particlePoint.vel[1] * timeFrame;
                 particlePoint.pos[2] += particleStartSpeed * particlePoint.vel[2] * timeFrame;
+
+                if(particleOverLifeModule != null) {
+                    float rotate_rate = particleOverLifeModule.getRotate();
+                    if(rotate_rate != 0) {
+                        particlePoint.rotate += rotate_rate * timeFrame;
+                    }
+                }
+
+
                 particlePoint.life -= timeFrame * 1000;
 
 
@@ -197,8 +207,9 @@ public class ParticleSystem {
                 isLoadTexture = true;
 
                 // 更新buffer, 宽度乘上一个比例，因为投影矩阵的关系
-                setTextureSize(startParticleSize * ratio * textureItem.getOriWidth() * 1.0f / width ,
-                        startParticleSize * textureItem.getOriHeight() * 1.0f / height);
+//                setTextureSize(startParticleSize * ratio * textureItem.getOriWidth() * 1.0f / width ,
+//                        startParticleSize * textureItem.getOriHeight() * 1.0f / height);
+                setTextureSize(startParticleSize_x,startParticleSize_y);
 
             }
         }
@@ -272,8 +283,17 @@ public class ParticleSystem {
                 float[] color = particlePoint.color;
                 GLES20.glUniform4f(shader.aColor, color[0], color[1], color[2], color[3]);
 
+                //rotate
+
+
                 float[] pos = particlePoint.pos;
                 Matrix.translateM(mvpMatrix, 0, pos[0], pos[1], pos[2]);
+
+                float rotate = particlePoint.getRotate();
+                Matrix.rotateM(mvpMatrix, 0,rotate, 0, 0 , 1);
+
+
+
                 GLES20.glUniformMatrix4fv(shader.aMVPMatrix, 1, false, mvpMatrix, 0);
                 GLES20.glDrawElements(GLES20.GL_TRIANGLES, indices.length, GLES20.GL_UNSIGNED_SHORT, mIndexBuffer);
                 checkGlError("glDrawElements");
@@ -437,7 +457,19 @@ public class ParticleSystem {
      * @param startParticleSize
      */
     public void setStartParticleSize(float startParticleSize) {
-        this.startParticleSize = startParticleSize;
+        this.startParticleSize_x = startParticleSize;
+        this.startParticleSize_y = startParticleSize;
+    }
+
+
+
+    /**
+     * 设置粒子默认大小，放大倍数
+     * @param startParticleSizeX
+     */
+    public void setStartParticleSize(float startParticleSizeX,float startParticleSizeY) {
+        this.startParticleSize_x = startParticleSizeX;
+        this.startParticleSize_y = startParticleSizeY;
     }
 
     public void setgLShaderManager(GLShaderManager gLShaderManager) {

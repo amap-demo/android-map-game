@@ -15,6 +15,8 @@ public class ParticlePoint {
     // Color
     public float[] color = new float[4];
 
+    public float rotate = 0;
+
     public void setPosition(float[] position) {
         pos[0] = position[0];
         pos[1] = position[1];
@@ -51,5 +53,13 @@ public class ParticlePoint {
      */
     public boolean isAlive() {
         return this.life > 0;
+    }
+
+    public float getRotate() {
+        return rotate;
+    }
+
+    public void setRotate(float rotate) {
+        this.rotate = rotate;
     }
 }

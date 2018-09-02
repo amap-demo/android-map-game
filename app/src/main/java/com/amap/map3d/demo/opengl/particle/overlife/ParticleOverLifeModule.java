@@ -19,6 +19,7 @@ public class ParticleOverLifeModule {
      * 粒子速度
      */
     float[] velocity = new float[3];
+    private RotationOverLife rotateOverLife;
 
     public ParticleOverLifeModule() {
         velocity[0] = 1;
@@ -30,6 +31,18 @@ public class ParticleOverLifeModule {
         this.overLife = overLife;
     }
 
+    public void setRotateOverLife(RotationOverLife rotateOverLife) {
+        this.rotateOverLife = rotateOverLife;
+    }
+
+
+
+    public float getRotate() {
+        if(rotateOverLife != null) {
+            return rotateOverLife.getRotate();
+        }
+        return 0;
+    }
 
     /**
      * 获取各个方向上的速度
@@ -43,9 +56,5 @@ public class ParticleOverLifeModule {
         }
         return velocity;
     }
-
-
-
-
 
 }

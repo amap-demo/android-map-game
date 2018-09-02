@@ -161,42 +161,34 @@ public class ParticleSystem {
         if(readyToShowPoint == null) {
             return;
         }
-        synchronized (readyToShowPoint) {
-            Iterator<ParticlePoint> it = readyToShowPoint.iterator();
-            while(it.hasNext()){
-                ParticlePoint particlePoint = it.next();
+        Iterator<ParticlePoint> it = readyToShowPoint.iterator();
+        while(it.hasNext()){
+            ParticlePoint particlePoint = it.next();
+            // 粒子运动状态更新,速度*各个轴速度的变化* 时间系数
+            particlePoint.pos[0] += particleStartSpeed * particlePoint.vel[0] * timeFrame;
+            particlePoint.pos[1] += particleStartSpeed * particlePoint.vel[1] * timeFrame;
+            particlePoint.pos[2] += particleStartSpeed * particlePoint.vel[2] * timeFrame;
 
-                // 生命周期已经结束的元素直接删除
-                if (!particlePoint.isAlive()) {
-                    it.remove();
-                    continue;
-                }
-                // 粒子运动状态更新,速度*各个轴速度的变化* 时间系数
-                particlePoint.pos[0] += particleStartSpeed * particlePoint.vel[0] * timeFrame;
-                particlePoint.pos[1] += particleStartSpeed * particlePoint.vel[1] * timeFrame;
-                particlePoint.pos[2] += particleStartSpeed * particlePoint.vel[2] * timeFrame;
-
-                if(particleOverLifeModule != null) {
-                    float rotate_rate = particleOverLifeModule.getRotate();
-                    if(rotate_rate != 0) {
-                        particlePoint.rotate += rotate_rate * timeFrame;
-                    }
-
-                    float[] size = particleOverLifeModule.getSize(timeFrame);
-                    if(size != null) {
-                        particlePoint.scale[0] += size[0];
-                        particlePoint.scale[1] += size[1];
-                        particlePoint.scale[2] += size[2];
-                    }
-
+            if(particleOverLifeModule != null) {
+                float rotate_rate = particleOverLifeModule.getRotate();
+                if(rotate_rate != 0) {
+                    particlePoint.rotate += rotate_rate * timeFrame;
                 }
 
-
-                particlePoint.life -= timeFrame * 1000;
-
-
+                float[] size = particleOverLifeModule.getSize(timeFrame);
+                if(size != null) {
+                    particlePoint.scale[0] += size[0];
+                    particlePoint.scale[1] += size[1];
+                    particlePoint.scale[2] += size[2];
+                }
 
             }
+
+
+            particlePoint.life -= timeFrame * 1000;
+
+
+
         }
     }
 
@@ -269,14 +261,16 @@ public class ParticleSystem {
             android.util.Log.i(DEBUG_TAG,"prepareParticle()");
         }
 
-        // 准备需要绘制的粒子
-        prepareParticle(readyToShowPoint,currentTime,timeFrame);
+        synchronized (readyToShowPoint) {
+            // 准备需要绘制的粒子
+            prepareParticle(readyToShowPoint, currentTime, timeFrame);
 
-        if(DEBUG_LOG) {
-            android.util.Log.i(DEBUG_TAG,"updateParticle () number " + readyToShowPoint.size());
+            if (DEBUG_LOG) {
+                android.util.Log.i(DEBUG_TAG, "updateParticle () number " + readyToShowPoint.size());
+            }
+
+            updateParticle(readyToShowPoint, timeFrame);
         }
-
-        updateParticle(readyToShowPoint, timeFrame);
 
 
         checkGlError("particle system  before draw");
@@ -301,9 +295,6 @@ public class ParticleSystem {
         synchronized (readyToShowPoint) {
             // 开始画
             for (ParticlePoint particlePoint : readyToShowPoint) {
-                if (!particlePoint.isAlive()) {
-                    continue;
-                }
                 float[] mvpMatrix = mvp.clone();
                 float[] color = particlePoint.color;
                 GLES20.glUniform4f(shader.aColor, color[0], color[1], color[2], color[3]);
@@ -370,6 +361,18 @@ public class ParticleSystem {
             return;
         }
         if(readyToShowPoint.size() > 0) {
+
+            Iterator<ParticlePoint> it = readyToShowPoint.iterator();
+            while(it.hasNext()) {
+                ParticlePoint particlePoint = it.next();
+
+                // 生命周期已经结束的元素直接删除
+                if (!particlePoint.isAlive()) {
+                    it.remove();
+                    continue;
+                }
+            }
+
             currentParticleNum = readyToShowPoint.size();
 
             // 粒子已经达到最大状态，不需要再最加

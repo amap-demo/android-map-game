@@ -12,7 +12,7 @@ public class CurveSizeOverLife extends SizeOverLife{
 
     Random random = new Random();
 
-    float k = 0.01f;
+    float k = 0.005f;
     public CurveSizeOverLife() {
 
     }
